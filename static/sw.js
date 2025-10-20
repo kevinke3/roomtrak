@@ -1,9 +1,11 @@
-const CACHE_NAME = 'roomtrack-v1.2';
+const CACHE_NAME = 'roomtrack-tenant-v2';
 const urlsToCache = [
     '/',
     '/static/css/style.css',
-    '/static/js/app.js',
-    '/static/manifest.json'
+    '/static/manifest.json',
+    '/tenant/dashboard',
+    '/tenant/payments',
+    '/tenant/maintenance'
 ];
 
 self.addEventListener('install', function(event) {
@@ -20,6 +22,7 @@ self.addEventListener('fetch', function(event) {
     event.respondWith(
         caches.match(event.request)
             .then(function(response) {
+                // Return cached version or fetch from network
                 if (response) {
                     return response;
                 }
@@ -28,3 +31,15 @@ self.addEventListener('fetch', function(event) {
         )
     );
 });
+
+// Background sync for offline payments
+self.addEventListener('sync', function(event) {
+    if (event.tag === 'background-payment-sync') {
+        event.waitUntil(doBackgroundSync());
+    }
+});
+
+async function doBackgroundSync() {
+    // Implement background sync for payments
+    console.log('Background sync triggered');
+}
