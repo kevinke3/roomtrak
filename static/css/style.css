@@ -26,7 +26,7 @@ body {
 
 /* Login Styles */
 .login-body {
-    background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+    background: linear-gradient(135deg, var(--light-gray), var(--dark-blue));
     min-height: 100vh;
     display: flex;
     align-items: center;
