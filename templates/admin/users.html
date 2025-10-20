@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users Management - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Admin Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('admin_dashboard') }}"><i>📊</i> Dashboard</a></li>
+                <li><a href="#" class="active"><i>👥</i> Users</a></li>
+                <li><a href="#"><i>🏢</i> Properties</a></li>
+                <li><a href="#"><i>💰</i> Payments</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>User Management</h1>
+                <p>Manage all system users</p>
+            </div>
+
+            <div class="table-container">
+                <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 25px;">
+                    <h3>All Users</h3>
+                    <button class="btn btn-primary" onclick="openCreateUserModal()">Add New User</button>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Joined</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                <span class="status-badge status-{{ user.role }}">
+                                    {{ user.role }}
+                                </span>
+                            </td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary">Edit</button>
+                                <button class="btn btn-sm btn-danger">Delete</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div id="createUserModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="form-container" style="margin: 20px; max-width: 500px;">
+            <h3>Create New User</h3>
+            <form id="createUserForm">
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="newEmail">Email</label>
+                    <input type="email" id="newEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Password</label>
+                    <input type="password" id="newPassword" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="newRole">Role</label>
+                    <select id="newRole" name="role" required>
+                        <option value="">Select Role</option>
+                        <option value="tenant">Tenant</option>
+                        <option value="landlord">Landlord</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 25px;">
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                    <button type="button" class="btn" onclick="closeCreateUserModal()" style="background: var(--gray); color: white;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openCreateUserModal() {
+            document.getElementById('createUserModal').style.display = 'flex';
+        }
+
+        function closeCreateUserModal() {
+            document.getElementById('createUserModal').style.display = 'none';
+        }
+
+        document.getElementById('createUserForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            fetch('/admin/create-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('User created successfully!');
+                    closeCreateUserModal();
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            });
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('createUserModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCreateUserModal();
+            }
+        });
+    </script>
+</body>
+</html>
