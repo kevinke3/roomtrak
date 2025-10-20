@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenants - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Landlord Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('landlord_dashboard') }}"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('landlord_payments') }}"><i>💰</i> Payments</a></li>
+                <li><a href="{{ url_for('landlord_properties') }}"><i>🏢</i> Properties</a></li>
+                <li><a href="#" class="active"><i>👥</i> Tenants</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>Tenant Management</h1>
+                <p>Manage your tenants and leases</p>
+            </div>
+
+            <div class="table-container">
+                <h3>Active Tenants</h3>
+                
+                {% if tenants %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Property</th>
+                            <th>Unit</th>
+                            <th>Monthly Rent</th>
+                            <th>Lease Period</th>
+                            <th>Contact</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tenant_data in tenants %}
+                        <tr>
+                            <td>
+                                <strong>{{ tenant_data.tenant.username }}</strong><br>
+                                <small>{{ tenant_data.tenant.email }}</small>
+                            </td>
+                            <td>{{ tenant_data.property.name }}</td>
+                            <td>{{ tenant_data.unit.unit_number }}</td>
+                            <td>KES {{ "%.2f"|format(tenant_data.lease.monthly_rent) }}</td>
+                            <td>
+                                {{ tenant_data.lease.start_date.strftime('%Y-%m-%d') }} to<br>
+                                {{ tenant_data.lease.end_date.strftime('%Y-%m-%d') }}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary">Message</button>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary">View Details</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center p-20">
+                    <h3>No Active Tenants</h3>
+                    <p>You don't have any active tenants at the moment.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
