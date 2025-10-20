@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenants - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Admin Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('admin_dashboard') }}"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('admin_users') }}"><i>👥</i> Users</a></li>
+                <li><a href="#" class="active"><i>👨‍👩‍👧‍👦</i> Tenants</a></li>
+                <li><a href="{{ url_for('admin_register_tenant') }}"><i>➕</i> Register Tenant</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>Tenant Management</h1>
+                <p>View and manage all registered tenants</p>
+            </div>
+
+            <div class="table-container">
+                <h3>All Tenants</h3>
+                
+                {% if tenants_data %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Full Name</th>
+                            <th>ID Number</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Property</th>
+                            <th>Unit</th>
+                            <th>Rent</th>
+                            <th>Lease Period</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in tenants_data %}
+                        <tr>
+                            <td>
+                                <strong>{{ data.tenant.full_name }}</strong><br>
+                                <small>@{{ data.tenant.username }}</small>
+                            </td>
+                            <td>{{ data.tenant.id_number }}</td>
+                            <td>{{ data.tenant.email }}</td>
+                            <td>{{ data.tenant.phone or 'N/A' }}</td>
+                            <td>{{ data.property.name if data.property else 'N/A' }}</td>
+                            <td>{{ data.unit.unit_number if data.unit else 'N/A' }}</td>
+                            <td>
+                                {% if data.lease %}
+                                    KES {{ "%.2f"|format(data.lease.monthly_rent) }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if data.lease %}
+                                    {{ data.lease.start_date.strftime('%Y-%m-%d') }} to<br>
+                                    {{ data.lease.end_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                    No active lease
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if data.lease %}
+                                    <span class="status-badge status-active">Active</span>
+                                {% else %}
+                                    <span class="status-badge status-vacant">No Unit</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center p-20">
+                    <h3>No Tenants Registered</h3>
+                    <p>No tenants have been registered yet.</p>
+                    <a href="{{ url_for('admin_register_tenant') }}" class="btn btn-primary">Register First Tenant</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
