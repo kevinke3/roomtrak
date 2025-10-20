@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Properties - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Landlord Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('landlord_dashboard') }}"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('landlord_payments') }}"><i>💰</i> Payments</a></li>
+                <li><a href="#" class="active"><i>🏢</i> Properties</a></li>
+                <li><a href="{{ url_for('landlord_tenants') }}"><i>👥</i> Tenants</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>Property Management</h1>
+                <p>Manage your properties and units</p>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <h2>Your Properties</h2>
+                <button class="btn btn-primary" onclick="openCreatePropertyModal()">Add New Property</button>
+            </div>
+
+            <div class="stats-grid">
+                {% for property in properties %}
+                <div class="card">
+                    <h3>{{ property.name }}</h3>
+                    <p style="color: var(--gray); margin-bottom: 15px;">{{ property.address }}</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                        <div class="stat-card" style="padding: 15px;">
+                            <h3>Total Units</h3>
+                            <div class="number">{{ property.total_units }}</div>
+                        </div>
+                        <div class="stat-card" style="padding: 15px;">
+                            <h3>Occupied</h3>
+                            <div class="number">{{ property.occupied_units }}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary btn-sm">View Units</button>
+                        <button class="btn btn-sm">Edit</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if not properties %}
+            <div class="card text-center">
+                <h3>No Properties Found</h3>
+                <p>You haven't added any properties yet.</p>
+                <button class="btn btn-primary" onclick="openCreatePropertyModal()">Add Your First Property</button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Create Property Modal -->
+    <div id="createPropertyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="form-container" style="margin: 20px; max-width: 500px;">
+            <h3>Add New Property</h3>
+            <form id="createPropertyForm">
+                <div class="form-group">
+                    <label for="propertyName">Property Name</label>
+                    <input type="text" id="propertyName" name="name" required placeholder="e.g., Sunrise Apartments">
+                </div>
+                <div class="form-group">
+                    <label for="propertyAddress">Address</label>
+                    <textarea id="propertyAddress" name="address" required rows="3" placeholder="Full property address"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="totalUnits">Total Units</label>
+                    <input type="number" id="totalUnits" name="total_units" required min="1" placeholder="Number of units">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 25px;">
+                    <button type="submit" class="btn btn-primary">Create Property</button>
+                    <button type="button" class="btn" onclick="closeCreatePropertyModal()" style="background: var(--gray); color: white;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openCreatePropertyModal() {
+            document.getElementById('createPropertyModal').style.display = 'flex';
+        }
+
+        function closeCreatePropertyModal() {
+            document.getElementById('createPropertyModal').style.display = 'none';
+        }
+
+        document.getElementById('createPropertyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            data.total_units = parseInt(data.total_units);
+            
+            fetch('/api/landlord/create-property', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Property created successfully!');
+                    closeCreatePropertyModal();
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            });
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('createPropertyModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCreatePropertyModal();
+            }
+        });
+    </script>
+</body>
+</html>
