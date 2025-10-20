@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from models import db, User, Property, Unit, Lease, Payment, Message, Notification
+from models import db, User, Property, Unit, Lease, Payment, Message, Notification, MaintenanceRequest
 from config import Config
 from datetime import datetime, timedelta
 import json
@@ -114,6 +114,101 @@ def create_user():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# Admin Routes for Tenant Management
+@app.route('/admin/register-tenant', methods=['GET', 'POST'])
+@login_required
+def admin_register_tenant():
+    if current_user.role != 'admin':
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        
+        # Create tenant user
+        tenant = User(
+            username=data.get('username'),
+            email=data.get('email'),
+            password=data.get('password'),
+            role='tenant',
+            full_name=data.get('full_name'),
+            id_number=data.get('id_number'),
+            passport_number=data.get('passport_number'),
+            phone=data.get('phone')
+        )
+        
+        try:
+            db.session.add(tenant)
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Tenant registered successfully', 'tenant_id': tenant.id})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+    
+    # GET request - show form
+    properties = Property.query.all()
+    vacant_units = Unit.query.filter_by(status='vacant').all()
+    return render_template('admin/register_tenant.html', properties=properties, vacant_units=vacant_units)
+
+@app.route('/admin/assign-unit', methods=['POST'])
+@login_required
+def admin_assign_unit():
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    
+    tenant = User.query.get(data.get('tenant_id'))
+    unit = Unit.query.get(data.get('unit_id'))
+    
+    if not tenant or not unit:
+        return jsonify({'error': 'Tenant or unit not found'}), 404
+    
+    if unit.status != 'vacant':
+        return jsonify({'error': 'Unit is not vacant'}), 400
+    
+    # Create lease
+    lease = Lease(
+        tenant_id=tenant.id,
+        unit_id=unit.id,
+        start_date=datetime.strptime(data.get('start_date'), '%Y-%m-%d').date(),
+        end_date=datetime.strptime(data.get('end_date'), '%Y-%m-%d').date(),
+        monthly_rent=unit.rent_amount,
+        security_deposit=data.get('security_deposit', 0),
+        status='active'
+    )
+    
+    # Update unit status
+    unit.status = 'occupied'
+    
+    # Update property occupancy
+    unit.property.occupied_units += 1
+    
+    try:
+        db.session.add(lease)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Unit assigned successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/admin/tenants')
+@login_required
+def admin_tenants():
+    if current_user.role != 'admin':
+        return redirect(url_for('index'))
+    
+    tenants = User.query.filter_by(role='tenant').all()
+    tenants_data = []
+    
+    for tenant in tenants:
+        lease = Lease.query.filter_by(tenant_id=tenant.id, status='active').first()
+        tenants_data.append({
+            'tenant': tenant,
+            'lease': lease,
+            'unit': lease.unit if lease else None,
+            'property': lease.unit.property if lease and lease.unit else None
+        })
+    
+    return render_template('admin/tenants.html', tenants_data=tenants_data)
+
 # Landlord Routes
 @app.route('/landlord/dashboard')
 @login_required
@@ -201,6 +296,58 @@ def landlord_tenants():
                     })
     
     return render_template('landlord/tenants.html', tenants=tenants)
+
+# Landlord Routes for Enhanced Views
+@app.route('/landlord/units')
+@login_required
+def landlord_units():
+    if current_user.role != 'landlord':
+        return redirect(url_for('index'))
+    
+    properties = Property.query.filter_by(landlord_id=current_user.id).all()
+    units = Unit.query.filter(Unit.property_id.in_([p.id for p in properties])).all()
+    
+    return render_template('landlord/units.html', properties=properties, units=units)
+
+@app.route('/landlord/maintenance-reports')
+@login_required
+def landlord_maintenance_reports():
+    if current_user.role != 'landlord':
+        return redirect(url_for('index'))
+    
+    properties = Property.query.filter_by(landlord_id=current_user.id).all()
+    property_ids = [p.id for p in properties]
+    
+    maintenance_requests = MaintenanceRequest.query.join(Unit).filter(Unit.property_id.in_(property_ids)).order_by(MaintenanceRequest.created_at.desc()).all()
+    
+    return render_template('landlord/maintenance_reports.html', maintenance_requests=maintenance_requests)
+
+@app.route('/landlord/tenant-payments')
+@login_required
+def landlord_tenant_payments():
+    if current_user.role != 'landlord':
+        return redirect(url_for('index'))
+    
+    properties = Property.query.filter_by(landlord_id=current_user.id).all()
+    
+    # Get all payments for this landlord's properties
+    all_payments = []
+    for prop in properties:
+        for unit in prop.units:
+            for lease in unit.leases:
+                payments = Payment.query.filter_by(lease_id=lease.id).all()
+                for payment in payments:
+                    all_payments.append({
+                        'payment': payment,
+                        'tenant': lease.tenant,
+                        'unit': unit,
+                        'property': prop
+                    })
+    
+    # Sort by creation date (newest first)
+    all_payments.sort(key=lambda x: x['payment'].created_at, reverse=True)
+    
+    return render_template('landlord/tenant_payments.html', payments_data=all_payments, today=datetime.now())
 
 @app.route('/api/payment/approve/<int:payment_id>', methods=['POST'])
 @login_required
@@ -370,7 +517,10 @@ def tenant_maintenance():
     if current_user.role != 'tenant':
         return redirect(url_for('index'))
     
-    return render_template('tenant/maintenance.html')
+    lease = Lease.query.filter_by(tenant_id=current_user.id, status='active').first()
+    maintenance_requests = MaintenanceRequest.query.filter_by(tenant_id=current_user.id).order_by(MaintenanceRequest.created_at.desc()).all() if lease else []
+    
+    return render_template('tenant/maintenance.html', maintenance_requests=maintenance_requests)
 
 @app.route('/tenant/submit-maintenance', methods=['POST'])
 @login_required
@@ -384,22 +534,22 @@ def submit_maintenance():
     
     data = request.get_json()
     
-    # Create maintenance request (stored as a message for now)
-    message = Message(
-        sender_id=current_user.id,
-        receiver_id=lease.unit.property.landlord_id,
-        subject=f'Maintenance Request - {data.get("title")}',
-        message=data.get('description'),
-        is_read=False
+    # Create maintenance request
+    maintenance = MaintenanceRequest(
+        tenant_id=current_user.id,
+        unit_id=lease.unit_id,
+        title=data.get('title'),
+        description=data.get('description'),
+        urgency=data.get('urgency', 'medium')
     )
     
-    db.session.add(message)
+    db.session.add(maintenance)
     
     # Create notification for landlord
     notification = Notification(
         user_id=lease.unit.property.landlord_id,
         title='New Maintenance Request',
-        message=f'Tenant {current_user.username} submitted a maintenance request: {data.get("title")}',
+        message=f'Tenant {current_user.full_name or current_user.username} submitted a maintenance request: {data.get("title")}',
         type='maintenance_request'
     )
     db.session.add(notification)
@@ -476,6 +626,87 @@ def tenant_payment_history():
     }
     
     return jsonify(data)
+
+# Maintenance API Routes
+@app.route('/api/maintenance/update-status/<int:request_id>', methods=['POST'])
+@login_required
+def update_maintenance_status(request_id):
+    maintenance = MaintenanceRequest.query.get_or_404(request_id)
+    
+    # Verify the maintenance request belongs to this landlord's property
+    properties = Property.query.filter_by(landlord_id=current_user.id).all()
+    property_ids = [p.id for p in properties]
+    
+    if maintenance.unit.property_id not in property_ids:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    maintenance.status = data.get('status')
+    maintenance.updated_at = datetime.utcnow()
+    
+    # Create notification for tenant
+    notification = Notification(
+        user_id=maintenance.tenant_id,
+        title='Maintenance Status Updated',
+        message=f'Your maintenance request "{maintenance.title}" has been marked as {data.get("status").replace("_", " ")}.',
+        type='maintenance_update'
+    )
+    db.session.add(notification)
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Maintenance status updated'})
+
+# API to get vacant units for a property
+@app.route('/api/property/<int:property_id>/vacant-units')
+@login_required
+def get_vacant_units(property_id):
+    vacant_units = Unit.query.filter_by(property_id=property_id, status='vacant').all()
+    
+    units_data = []
+    for unit in vacant_units:
+        units_data.append({
+            'id': unit.id,
+            'unit_number': unit.unit_number,
+            'rent_amount': unit.rent_amount,
+            'bedrooms': unit.bedrooms,
+            'bathrooms': unit.bathrooms
+        })
+    
+    return jsonify(units_data)
+
+# API to create sample units for a property
+@app.route('/api/property/<int:property_id>/create-sample-units', methods=['POST'])
+@login_required
+def create_sample_units(property_id):
+    if current_user.role != 'admin' and current_user.role != 'landlord':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    property = Property.query.get_or_404(property_id)
+    
+    # Create sample units
+    units_data = [
+        {'unit_number': 'A101', 'rent_amount': 25000, 'bedrooms': 2, 'bathrooms': 1},
+        {'unit_number': 'A102', 'rent_amount': 28000, 'bedrooms': 2, 'bathrooms': 2},
+        {'unit_number': 'A201', 'rent_amount': 30000, 'bedrooms': 3, 'bathrooms': 2},
+        {'unit_number': 'A202', 'rent_amount': 32000, 'bedrooms': 3, 'bathrooms': 2},
+        {'unit_number': 'B101', 'rent_amount': 22000, 'bedrooms': 1, 'bathrooms': 1},
+        {'unit_number': 'B102', 'rent_amount': 24000, 'bedrooms': 1, 'bathrooms': 1},
+    ]
+    
+    for unit_data in units_data:
+        unit = Unit(
+            unit_number=unit_data['unit_number'],
+            rent_amount=unit_data['rent_amount'],
+            bedrooms=unit_data['bedrooms'],
+            bathrooms=unit_data['bathrooms'],
+            property_id=property_id
+        )
+        db.session.add(unit)
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Sample units created successfully'})
 
 # Notification Routes
 @app.route('/api/notifications')
