@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Admin Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('admin_dashboard') }}" class="active"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('admin_users') }}"><i>👥</i> Users</a></li>
+                <li><a href="#"><i>🏢</i> Properties</a></li>
+                <li><a href="#"><i>💰</i> Payments</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>Admin Dashboard</h1>
+                <p>System-wide management overview</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <div class="number">{{ stats.total_users }}</div>
+                    <p class="subtext">Registered users</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Properties</h3>
+                    <div class="number">{{ stats.total_properties }}</div>
+                    <p class="subtext">Managed properties</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Landlords</h3>
+                    <div class="number">{{ stats.total_landlords }}</div>
+                    <p class="subtext">Property owners</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Tenants</h3>
+                    <div class="number">{{ stats.total_tenants }}</div>
+                    <p class="subtext">Active tenants</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>System Overview</h3>
+                <canvas id="systemChart" width="400" height="200"></canvas>
+            </div>
+
+            <div class="table-container">
+                <h3>Recent System Activity</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>User</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>User Registration</td>
+                            <td>landlord1</td>
+                            <td>Just now</td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                        </tr>
+                        <tr>
+                            <td>Payment Processed</td>
+                            <td>tenant1</td>
+                            <td>5 minutes ago</td>
+                            <td><span class="status-badge status-approved">Approved</span></td>
+                        </tr>
+                        <tr>
+                            <td>Property Added</td>
+                            <td>landlord1</td>
+                            <td>1 hour ago</td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                        </tr>
+                        <tr>
+                            <td>Maintenance Request</td>
+                            <td>tenant1</td>
+                            <td>2 hours ago</td>
+                            <td><span class="status-badge status-pending">Pending</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // System Overview Chart
+        const ctx = document.getElementById('systemChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Users', 'Properties', 'Landlords', 'Tenants', 'Payments'],
+                datasets: [{
+                    label: 'System Statistics',
+                    data: [
+                        {{ stats.total_users }},
+                        {{ stats.total_properties }},
+                        {{ stats.total_landlords }},
+                        {{ stats.total_tenants }},
+                        {{ stats.total_users * 2 }}
+                    ],
+                    backgroundColor: [
+                        '#3498db',
+                        '#27ae60',
+                        '#e74c3c',
+                        '#f39c12',
+                        '#9b59b6'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'System Distribution'
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
