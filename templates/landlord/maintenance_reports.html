@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance Reports - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Landlord Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('landlord_dashboard') }}"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('landlord_payments') }}"><i>💰</i> Payments</a></li>
+                <li><a href="{{ url_for('landlord_units') }}"><i>🏢</i> Units</a></li>
+                <li><a href="{{ url_for('landlord_tenants') }}"><i>👥</i> Tenants</a></li>
+                <li><a href="#" class="active"><i>🔧</i> Maintenance</a></li>
+                <li><a href="{{ url_for('landlord_tenant_payments') }}"><i>💳</i> Tenant Payments</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>Maintenance Reports</h1>
+                <p>View and manage maintenance requests from tenants</p>
+            </div>
+
+            <div class="table-container">
+                <h3>All Maintenance Requests</h3>
+                
+                {% if maintenance_requests %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Unit</th>
+                            <th>Issue</th>
+                            <th>Description</th>
+                            <th>Urgency</th>
+                            <th>Submitted</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for request in maintenance_requests %}
+                        <tr>
+                            <td>
+                                <strong>{{ request.tenant.full_name }}</strong><br>
+                                <small>{{ request.tenant.phone or 'No phone' }}</small>
+                            </td>
+                            <td>{{ request.unit.unit_number }}</td>
+                            <td><strong>{{ request.title }}</strong></td>
+                            <td>{{ request.description[:100] }}{% if request.description|length > 100 %}...{% endif %}</td>
+                            <td>
+                                <span class="status-badge 
+                                    {% if request.urgency == 'emergency' %}status-rejected
+                                    {% elif request.urgency == 'high' %}status-pending
+                                    {% elif request.urgency == 'medium' %}status-active
+                                    {% else %}status-vacant{% endif %}">
+                                    {{ request.urgency|title }}
+                                </span>
+                            </td>
+                            <td>{{ request.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <span class="status-badge status-{{ request.status }}">
+                                    {{ request.status|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <select onchange="updateMaintenanceStatus({{ request.id }}, this.value)" class="btn btn-sm">
+                                    <option value="pending" {% if request.status == 'pending' %}selected{% endif %}>Pending</option>
+                                    <option value="in_progress" {% if request.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                    <option value="completed" {% if request.status == 'completed' %}selected{% endif %}>Completed</option>
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center p-20">
+                    <h3>No Maintenance Requests</h3>
+                    <p>No maintenance requests have been submitted yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateMaintenanceStatus(requestId, status) {
+            fetch(`/api/maintenance/update-status/${requestId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ status: status })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Maintenance status updated successfully!');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
