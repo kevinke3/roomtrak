@@ -16,8 +16,10 @@
             <ul class="sidebar-nav">
                 <li><a href="{{ url_for('landlord_dashboard') }}"><i>📊</i> Dashboard</a></li>
                 <li><a href="{{ url_for('landlord_payments') }}"><i>💰</i> Payments</a></li>
-                <li><a href="#" class="active"><i>🏢</i> Properties</a></li>
+                <li><a href="{{ url_for('landlord_units') }}"><i>🏢</i> Units</a></li>
                 <li><a href="{{ url_for('landlord_tenants') }}"><i>👥</i> Tenants</a></li>
+                <li><a href="{{ url_for('landlord_maintenance_reports') }}"><i>🔧</i> Maintenance</a></li>
+                <li><a href="{{ url_for('landlord_tenant_payments') }}"><i>💳</i> Tenant Payments</a></li>
                 <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
             </ul>
         </div>
@@ -51,7 +53,7 @@
                     </div>
                     
                     <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-primary btn-sm">View Units</button>
+                        <button class="btn btn-primary btn-sm" onclick="location.href='{{ url_for('landlord_units') }}'">View Units</button>
                         <button class="btn btn-sm">Edit</button>
                     </div>
                 </div>
