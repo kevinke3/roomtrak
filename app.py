@@ -100,6 +100,17 @@ def create_user():
         return jsonify({'error': 'Unauthorized'}), 403
     
     data = request.get_json()
+    
+    # Check if email already exists
+    existing_user = User.query.filter_by(email=data.get('email')).first()
+    if existing_user:
+        return jsonify({'error': 'Email already exists. Please use a different email address.'}), 400
+    
+    # Check if username already exists
+    existing_username = User.query.filter_by(username=data.get('username')).first()
+    if existing_username:
+        return jsonify({'error': 'Username already exists. Please choose a different username.'}), 400
+    
     user = User(
         username=data.get('username'),
         email=data.get('email'),
@@ -359,6 +370,16 @@ def landlord_add_tenant():
     if request.method == 'POST':
         data = request.get_json()
         
+        # Check if email already exists
+        existing_user = User.query.filter_by(email=data.get('email')).first()
+        if existing_user:
+            return jsonify({'error': 'Email already exists. Please use a different email address.'}), 400
+        
+        # Check if username already exists
+        existing_username = User.query.filter_by(username=data.get('username')).first()
+        if existing_username:
+            return jsonify({'error': 'Username already exists. Please choose a different username.'}), 400
+        
         # Create tenant user
         tenant = User(
             username=data.get('username'),
@@ -407,13 +428,16 @@ def landlord_assign_unit():
     if unit.status != 'vacant':
         return jsonify({'error': 'Unit is not vacant'}), 400
     
+    # Use custom rent amount if provided, otherwise use unit's default rent
+    monthly_rent = data.get('monthly_rent', unit.rent_amount)
+    
     # Create lease
     lease = Lease(
         tenant_id=tenant.id,
         unit_id=unit.id,
         start_date=datetime.strptime(data.get('start_date'), '%Y-%m-%d').date(),
         end_date=datetime.strptime(data.get('end_date'), '%Y-%m-%d').date(),
-        monthly_rent=unit.rent_amount,
+        monthly_rent=monthly_rent,  # Use custom rent amount
         security_deposit=data.get('security_deposit', 0),
         status='active'
     )
@@ -508,6 +532,45 @@ def landlord_delete_tenant(tenant_id):
         db.session.commit()
         
         return jsonify({'success': True, 'message': 'Tenant deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# Landlord Unit Management
+@app.route('/landlord/add-unit')
+@login_required
+def landlord_add_unit():
+    if current_user.role != 'landlord':
+        return redirect(url_for('index'))
+    
+    properties = Property.query.filter_by(landlord_id=current_user.id).all()
+    return render_template('landlord/add_unit.html', properties=properties)
+
+@app.route('/api/landlord/create-unit', methods=['POST'])
+@login_required
+def create_unit():
+    if current_user.role != 'landlord':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    
+    # Verify the property belongs to this landlord
+    property = Property.query.get(data.get('property_id'))
+    if not property or property.landlord_id != current_user.id:
+        return jsonify({'error': 'Unauthorized - Property does not belong to you'}), 403
+    
+    unit = Unit(
+        unit_number=data.get('unit_number'),
+        unit_name=data.get('unit_name'),
+        rent_amount=data.get('rent_amount'),
+        bedrooms=data.get('bedrooms', 1),
+        bathrooms=data.get('bathrooms', 1),
+        property_id=data.get('property_id')
+    )
+    
+    try:
+        db.session.add(unit)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Unit created successfully'})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -650,7 +713,7 @@ def submit_payment():
     
     payment = Payment(
         lease_id=lease.id,
-        amount=lease.monthly_rent,
+        amount=data.get('amount', lease.monthly_rent),  # Allow custom amount
         payment_date=datetime.now().date(),
         due_date=datetime.now().date() + timedelta(days=30),
         transaction_code=data.get('transaction_code'),
@@ -664,7 +727,7 @@ def submit_payment():
     notification = Notification(
         user_id=lease.unit.property.landlord_id,
         title='New Payment Submitted',
-        message=f'Tenant {current_user.username} submitted a payment of KES {lease.monthly_rent:,.2f}. Transaction: {data.get("transaction_code")}',
+        message=f'Tenant {current_user.username} submitted a payment of KES {payment.amount:,.2f}. Transaction: {data.get("transaction_code")}',
         type='payment_submitted'
     )
     db.session.add(notification)
@@ -672,6 +735,44 @@ def submit_payment():
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Payment submitted successfully'})
+
+@app.route('/tenant/edit-payment/<int:payment_id>', methods=['POST'])
+@login_required
+def edit_payment(payment_id):
+    if current_user.role != 'tenant':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    payment = Payment.query.get_or_404(payment_id)
+    
+    # Verify the payment belongs to this tenant
+    if payment.lease.tenant_id != current_user.id:
+        return jsonify({'error': 'Unauthorized - Payment does not belong to you'}), 403
+    
+    # Only allow editing pending payments
+    if payment.status != 'pending':
+        return jsonify({'error': 'Can only edit pending payments'}), 400
+    
+    data = request.get_json()
+    new_amount = data.get('amount')
+    
+    if not new_amount or new_amount <= 0:
+        return jsonify({'error': 'Invalid amount'}), 400
+    
+    payment.amount = new_amount
+    payment.transaction_code = data.get('transaction_code', payment.transaction_code)
+    
+    # Create notification for landlord
+    notification = Notification(
+        user_id=payment.lease.unit.property.landlord_id,
+        title='Payment Updated',
+        message=f'Tenant {current_user.username} updated payment amount to KES {new_amount:,.2f}',
+        type='payment_updated'
+    )
+    db.session.add(notification)
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Payment updated successfully'})
 
 @app.route('/tenant/maintenance')
 @login_required
@@ -830,6 +931,7 @@ def get_vacant_units(property_id):
         units_data.append({
             'id': unit.id,
             'unit_number': unit.unit_number,
+            'unit_name': unit.unit_name,
             'rent_amount': unit.rent_amount,
             'bedrooms': unit.bedrooms,
             'bathrooms': unit.bathrooms
@@ -848,17 +950,18 @@ def create_sample_units(property_id):
     
     # Create sample units
     units_data = [
-        {'unit_number': 'A101', 'rent_amount': 25000, 'bedrooms': 2, 'bathrooms': 1},
-        {'unit_number': 'A102', 'rent_amount': 28000, 'bedrooms': 2, 'bathrooms': 2},
-        {'unit_number': 'A201', 'rent_amount': 30000, 'bedrooms': 3, 'bathrooms': 2},
-        {'unit_number': 'A202', 'rent_amount': 32000, 'bedrooms': 3, 'bathrooms': 2},
-        {'unit_number': 'B101', 'rent_amount': 22000, 'bedrooms': 1, 'bathrooms': 1},
-        {'unit_number': 'B102', 'rent_amount': 24000, 'bedrooms': 1, 'bathrooms': 1},
+        {'unit_number': 'A101', 'unit_name': 'Garden View', 'rent_amount': 25000, 'bedrooms': 2, 'bathrooms': 1},
+        {'unit_number': 'A102', 'unit_name': 'City View', 'rent_amount': 28000, 'bedrooms': 2, 'bathrooms': 2},
+        {'unit_number': 'A201', 'unit_name': 'Executive Suite', 'rent_amount': 30000, 'bedrooms': 3, 'bathrooms': 2},
+        {'unit_number': 'A202', 'unit_name': 'Penthouse', 'rent_amount': 32000, 'bedrooms': 3, 'bathrooms': 2},
+        {'unit_number': 'B101', 'unit_name': 'Studio', 'rent_amount': 22000, 'bedrooms': 1, 'bathrooms': 1},
+        {'unit_number': 'B102', 'unit_name': 'Cozy Studio', 'rent_amount': 24000, 'bedrooms': 1, 'bathrooms': 1},
     ]
     
     for unit_data in units_data:
         unit = Unit(
             unit_number=unit_data['unit_number'],
+            unit_name=unit_data['unit_name'],
             rent_amount=unit_data['rent_amount'],
             bedrooms=unit_data['bedrooms'],
             bathrooms=unit_data['bathrooms'],
