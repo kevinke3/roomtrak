@@ -27,37 +27,37 @@
         <div class="main-content">
             <div class="header">
                 <h1>Tenant Payment History</h1>
-                <p>View all payments from your tenants</p>
+                <p>View detailed payment history from all tenants</p>
             </div>
 
             <div class="stats-grid">
                 <div class="stat-card">
                     <h3>Total Received</h3>
                     <div class="number">
-                        KES {{ "{:,.2f}".format(payments_data|selectattr('payment.status', 'equalto', 'approved')|map(attribute='payment.amount')|sum) }}
+                        KES {{ "{:,.0f}".format(payments_data|selectattr('payment.status', 'equalto', 'approved')|map(attribute='payment.amount')|sum) }}
                     </div>
                     <p class="subtext">Approved payments</p>
                 </div>
                 <div class="stat-card">
                     <h3>Pending Approval</h3>
                     <div class="number">
-                        KES {{ "{:,.2f}".format(payments_data|selectattr('payment.status', 'equalto', 'pending')|map(attribute='payment.amount')|sum) }}
+                        KES {{ "{:,.0f}".format(payments_data|selectattr('payment.status', 'equalto', 'pending')|map(attribute='payment.amount')|sum) }}
                     </div>
                     <p class="subtext">Awaiting approval</p>
                 </div>
                 <div class="stat-card">
-                    <h3>Total Tenants</h3>
+                    <h3>Active Tenants</h3>
                     <div class="number">
                         {{ (payments_data|map(attribute='tenant')|unique|list)|length }}
                     </div>
-                    <p class="subtext">Active tenants</p>
+                    <p class="subtext">Paying tenants</p>
                 </div>
                 <div class="stat-card">
                     <h3>This Month</h3>
                     <div class="number">
-                        KES {{ "{:,.2f}".format(payments_data|selectattr('payment.status', 'equalto', 'approved')|selectattr('payment.payment_date', 'month_equalto', today.month)|map(attribute='payment.amount')|sum) }}
+                        KES {{ "{:,.0f}".format(payments_data|selectattr('payment.status', 'equalto', 'approved')|selectattr('payment.payment_date.month', 'equalto', today.month)|map(attribute='payment.amount')|sum) }}
                     </div>
-                    <p class="subtext">Current month revenue</p>
+                    <p class="subtext">Current month</p>
                 </div>
             </div>
 
@@ -68,14 +68,10 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Tenant</th>
-                            <th>Property</th>
-                            <th>Unit</th>
-                            <th>Amount</th>
-                            <th>Payment Date</th>
-                            <th>Due Date</th>
-                            <th>Method</th>
-                            <th>Transaction Code</th>
+                            <th>Tenant Details</th>
+                            <th>Property & Unit</th>
+                            <th>Payment Information</th>
+                            <th>Transaction</th>
                             <th>Status</th>
                             <th>Action</th>
                         </tr>
@@ -85,15 +81,24 @@
                         <tr>
                             <td>
                                 <strong>{{ data.tenant.full_name }}</strong><br>
-                                <small>{{ data.tenant.email }}</small>
+                                <small>{{ data.tenant.email }}</small><br>
+                                <small>{{ data.tenant.phone or 'No phone' }}</small>
                             </td>
-                            <td>{{ data.property.name }}</td>
-                            <td>{{ data.unit.unit_number }}</td>
-                            <td>KES {{ "%.2f"|format(data.payment.amount) }}</td>
-                            <td>{{ data.payment.payment_date.strftime('%Y-%m-%d') }}</td>
-                            <td>{{ data.payment.due_date.strftime('%Y-%m-%d') }}</td>
-                            <td>{{ data.payment.payment_method|upper }}</td>
-                            <td>{{ data.payment.transaction_code }}</td>
+                            <td>
+                                <strong>{{ data.property.name }}</strong><br>
+                                <small>Unit: {{ data.unit.unit_number }}</small><br>
+                                <small>{{ data.unit.bedrooms }} bed, {{ data.unit.bathrooms }} bath</small>
+                            </td>
+                            <td>
+                                <strong>KES {{ "%.2f"|format(data.payment.amount) }}</strong><br>
+                                <small>Paid: {{ data.payment.payment_date.strftime('%Y-%m-%d') }}</small><br>
+                                <small>Due: {{ data.payment.due_date.strftime('%Y-%m-%d') }}</small>
+                            </td>
+                            <td>
+                                <strong>Method:</strong> {{ data.payment.payment_method|upper }}<br>
+                                <strong>Code:</strong> {{ data.payment.transaction_code }}<br>
+                                <small>Submitted: {{ data.payment.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </td>
                             <td>
                                 <span class="status-badge status-{{ data.payment.status }}">
                                     {{ data.payment.status|title }}
@@ -101,12 +106,15 @@
                             </td>
                             <td>
                                 {% if data.payment.status == 'pending' %}
-                                <div style="display: flex; gap: 5px;">
+                                <div style="display: flex; flex-direction: column; gap: 5px;">
                                     <button class="btn btn-success btn-sm" onclick="approvePayment({{ data.payment.id }})">Approve</button>
                                     <button class="btn btn-danger btn-sm" onclick="rejectPayment({{ data.payment.id }})">Reject</button>
                                 </div>
                                 {% else %}
                                 <span style="color: var(--gray);">Processed</span>
+                                {% if data.payment.receipt_generated %}
+                                <button class="btn btn-primary btn-sm" style="margin-top: 5px;">Receipt</button>
+                                {% endif %}
                                 {% endif %}
                             </td>
                         </tr>
