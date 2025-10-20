@@ -349,6 +349,168 @@ def landlord_tenant_payments():
     
     return render_template('landlord/tenant_payments.html', payments_data=all_payments, today=datetime.now())
 
+# Landlord Tenant Management Routes
+@app.route('/landlord/add-tenant', methods=['GET', 'POST'])
+@login_required
+def landlord_add_tenant():
+    if current_user.role != 'landlord':
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        
+        # Create tenant user
+        tenant = User(
+            username=data.get('username'),
+            email=data.get('email'),
+            password=data.get('password'),
+            role='tenant',
+            full_name=data.get('full_name'),
+            id_number=data.get('id_number'),
+            passport_number=data.get('passport_number'),
+            phone=data.get('phone')
+        )
+        
+        try:
+            db.session.add(tenant)
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Tenant registered successfully', 'tenant_id': tenant.id})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+    
+    # GET request - show form
+    properties = Property.query.filter_by(landlord_id=current_user.id).all()
+    vacant_units = Unit.query.filter(Unit.property_id.in_([p.id for p in properties]), Unit.status == 'vacant').all()
+    return render_template('landlord/add_tenant.html', properties=properties, vacant_units=vacant_units)
+
+@app.route('/landlord/assign-unit', methods=['POST'])
+@login_required
+def landlord_assign_unit():
+    if current_user.role != 'landlord':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    
+    tenant = User.query.get(data.get('tenant_id'))
+    unit = Unit.query.get(data.get('unit_id'))
+    
+    if not tenant or not unit:
+        return jsonify({'error': 'Tenant or unit not found'}), 404
+    
+    # Verify the unit belongs to this landlord
+    properties = Property.query.filter_by(landlord_id=current_user.id).all()
+    property_ids = [p.id for p in properties]
+    
+    if unit.property_id not in property_ids:
+        return jsonify({'error': 'Unauthorized - Unit does not belong to you'}), 403
+    
+    if unit.status != 'vacant':
+        return jsonify({'error': 'Unit is not vacant'}), 400
+    
+    # Create lease
+    lease = Lease(
+        tenant_id=tenant.id,
+        unit_id=unit.id,
+        start_date=datetime.strptime(data.get('start_date'), '%Y-%m-%d').date(),
+        end_date=datetime.strptime(data.get('end_date'), '%Y-%m-%d').date(),
+        monthly_rent=unit.rent_amount,
+        security_deposit=data.get('security_deposit', 0),
+        status='active'
+    )
+    
+    # Update unit status
+    unit.status = 'occupied'
+    
+    # Update property occupancy
+    unit.property.occupied_units += 1
+    
+    try:
+        db.session.add(lease)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Unit assigned successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/landlord/remove-tenant/<int:tenant_id>', methods=['POST'])
+@login_required
+def landlord_remove_tenant(tenant_id):
+    if current_user.role != 'landlord':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Find the tenant's active lease
+    lease = Lease.query.filter_by(tenant_id=tenant_id, status='active').first()
+    
+    if not lease:
+        return jsonify({'error': 'No active lease found for this tenant'}), 404
+    
+    # Verify the lease belongs to this landlord's property
+    properties = Property.query.filter_by(landlord_id=current_user.id).all()
+    property_ids = [p.id for p in properties]
+    
+    if lease.unit.property_id not in property_ids:
+        return jsonify({'error': 'Unauthorized - Tenant does not belong to your property'}), 403
+    
+    # End the lease
+    lease.status = 'ended'
+    lease.end_date = datetime.now().date()
+    
+    # Free up the unit
+    lease.unit.status = 'vacant'
+    
+    # Update property occupancy
+    lease.unit.property.occupied_units -= 1
+    
+    # Create notification for tenant
+    notification = Notification(
+        user_id=tenant_id,
+        title='Lease Ended',
+        message=f'Your lease for unit {lease.unit.unit_number} has been ended by the landlord.',
+        type='lease_ended'
+    )
+    db.session.add(notification)
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Tenant removed successfully'})
+
+@app.route('/landlord/delete-tenant/<int:tenant_id>', methods=['POST'])
+@login_required
+def landlord_delete_tenant(tenant_id):
+    if current_user.role != 'landlord':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    tenant = User.query.get(tenant_id)
+    
+    if not tenant or tenant.role != 'tenant':
+        return jsonify({'error': 'Tenant not found'}), 404
+    
+    # Check if tenant has any active leases with this landlord
+    properties = Property.query.filter_by(landlord_id=current_user.id).all()
+    property_ids = [p.id for p in properties]
+    
+    active_leases = Lease.query.filter_by(tenant_id=tenant_id, status='active').all()
+    has_active_lease = any(lease.unit.property_id in property_ids for lease in active_leases)
+    
+    if has_active_lease:
+        return jsonify({'error': 'Cannot delete tenant with active lease. Please remove them from the unit first.'}), 400
+    
+    # Delete tenant (only if they don't have active leases with this landlord)
+    try:
+        # Delete related records
+        Payment.query.filter(Payment.lease.has(tenant_id=tenant_id)).delete(synchronize_session=False)
+        MaintenanceRequest.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        Lease.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+        Message.query.filter((Message.sender_id == tenant_id) | (Message.receiver_id == tenant_id)).delete(synchronize_session=False)
+        Notification.query.filter_by(user_id=tenant_id).delete(synchronize_session=False)
+        
+        # Delete tenant user
+        db.session.delete(tenant)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Tenant deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 @app.route('/api/payment/approve/<int:payment_id>', methods=['POST'])
 @login_required
 def approve_payment(payment_id):
