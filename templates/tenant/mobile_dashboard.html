@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoomTrack - Tenant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#3498db">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+    <!-- Mobile Header -->
+    <div class="mobile-header tenant-mobile-view">
+        <div class="mobile-header-content">
+            <h1>RoomTrack</h1>
+            <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+        </div>
+    </div>
+
+    <!-- Mobile Main Content -->
+    <div class="mobile-main-content tenant-mobile-view">
+        <!-- Quick Stats -->
+        <div class="mobile-stats">
+            <div class="mobile-stat">
+                <div class="number">KES {{ "%.0f"|format(lease.monthly_rent) if lease else 0 }}</div>
+                <div class="label">Monthly Rent</div>
+            </div>
+            <div class="mobile-stat">
+                <div class="number">
+                    {% if next_due_date %}
+                        {{ next_due_date.strftime('%d/%m') }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+                <div class="label">Due Date</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <a href="#make-payment" class="quick-action-btn" onclick="showPaymentForm()">
+                <i>💰</i>
+                <span>Pay Rent</span>
+            </a>
+            <a href="{{ url_for('tenant_maintenance') }}" class="quick-action-btn">
+                <i>🔧</i>
+                <span>Maintenance</span>
+            </a>
+            <a href="{{ url_for('tenant_payments') }}" class="quick-action-btn">
+                <i>📝</i>
+                <span>Payments</span>
+            </a>
+            <a href="#contact" class="quick-action-btn" onclick="contactLandlord()">
+                <i>📞</i>
+                <span>Contact</span>
+            </a>
+        </div>
+
+        <!-- Current Unit Info -->
+        {% if lease %}
+        <div class="mobile-card">
+            <h3>My Unit</h3>
+            <p><strong>{{ lease.unit.unit_number }}</strong> - {{ lease.unit.property.name }}</p>
+            <p>Rent: KES {{ "%.2f"|format(lease.monthly_rent) }}/month</p>
+            <p>Lease: {{ lease.start_date.strftime('%d/%m/%Y') }} to {{ lease.end_date.strftime('%d/%m/%Y') }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Recent Payments -->
+        <div class="mobile-card">
+            <h3>Recent Payments</h3>
+            {% if payments %}
+                {% for payment in payments[:3] %}
+                <div class="payment-item {{ payment.status }}">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>KES {{ "%.2f"|format(payment.amount) }}</strong>
+                            <div style="font-size: 0.8em; color: var(--gray);">
+                                {{ payment.payment_date.strftime('%d %b') }}
+                            </div>
+                        </div>
+                        <span class="status-badge status-{{ payment.status }}">
+                            {{ payment.status|title }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if payments|length > 3 %}
+                <a href="{{ url_for('tenant_payments') }}" style="display: block; text-align: center; margin-top: 10px; color: var(--primary-blue); text-decoration: none;">
+                    View All Payments →
+                </a>
+                {% endif %}
+            {% else %}
+                <p style="text-align: center; color: var(--gray);">No payments yet</p>
+            {% endif %}
+        </div>
+
+        <!-- Notifications -->
+        {% if notifications %}
+        <div class="mobile-card">
+            <h3>Notifications</h3>
+            {% for notification in notifications %}
+            <div class="mobile-notification {% if not notification.is_read %}unread{% endif %}">
+                <strong>{{ notification.title }}</strong>
+                <p style="margin: 5px 0; font-size: 0.9em;">{{ notification.message }}</p>
+                <small style="color: var(--gray);">{{ notification.created_at.strftime('%d/%m %H:%M') }}</small>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Payment Form (Hidden by default) -->
+        <div id="payment-form" class="mobile-form" style="display: none;">
+            <h3>Make Payment</h3>
+            <form id="mobilePaymentForm">
+                <div class="mobile-form-group">
+                    <label for="mobile_amount">Amount (KES)</label>
+                    <input type="number" id="mobile_amount" name="amount" value="{{ "%.2f"|format(lease.monthly_rent) if lease else 0 }}" required min="0" step="0.01">
+                </div>
+                
+                <div class="mobile-form-group">
+                    <label for="mobile_transaction_code">Transaction Code</label>
+                    <input type="text" id="mobile_transaction_code" name="transaction_code" required placeholder="Enter M-Pesa code">
+                </div>
+                
+                <div class="mobile-form-group">
+                    <label for="mobile_payment_method">Payment Method</label>
+                    <select id="mobile_payment_method" name="payment_method" required>
+                        <option value="">Select method</option>
+                        <option value="mpesa">M-Pesa</option>
+                        <option value="bank">Bank Transfer</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Submit Payment</button>
+                    <button type="button" class="btn" onclick="hidePaymentForm()" style="background: var(--gray); color: white;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav tenant-mobile-view">
+        <div class="mobile-nav-items">
+            <a href="{{ url_for('tenant_dashboard') }}" class="mobile-nav-item active">
+                <i>🏠</i>
+                <span>Home</span>
+            </a>
+            <a href="{{ url_for('tenant_payments') }}" class="mobile-nav-item">
+                <i>💰</i>
+                <span>Payments</span>
+            </a>
+            <a href="{{ url_for('tenant_maintenance') }}" class="mobile-nav-item">
+                <i>🔧</i>
+                <span>Repairs</span>
+            </a>
+            <a href="#profile" class="mobile-nav-item" onclick="showProfile()">
+                <i>👤</i>
+                <span>Profile</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- App Install Banner -->
+    <div class="app-install-banner" id="installBanner">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong>Install RoomTrack App</strong>
+            <button class="dismiss-btn" onclick="dismissBanner()">✕</button>
+        </div>
+        <p style="margin-bottom: 10px; font-size: 0.9em;">Get faster access with our mobile app</p>
+        <button class="install-btn" onclick="installApp()">Install</button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div style="text-align: center;">
+            <div class="loading" style="width: 40px; height: 40px; margin: 0 auto 10px;"></div>
+            <p>Processing...</p>
+        </div>
+    </div>
+
+    <script>
+        // Mobile Payment Form
+        function showPaymentForm() {
+            document.getElementById('payment-form').style.display = 'block';
+            document.getElementById('payment-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hidePaymentForm() {
+            document.getElementById('payment-form').style.display = 'none';
+        }
+
+        // Contact Landlord
+        function contactLandlord() {
+            alert('Contact feature coming soon!');
+        }
+
+        // Show Profile
+        function showProfile() {
+            alert('Profile feature coming soon!');
+        }
+
+        // Mobile Payment Form Submission
+        document.getElementById('mobilePaymentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            data.amount = parseFloat(data.amount);
+            
+            // Show loading
+            document.getElementById('loadingOverlay').classList.add('show');
+            
+            fetch('/tenant/submit-payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                document.getElementById('loadingOverlay').classList.remove('show');
+                
+                if (result.success) {
+                    alert('Payment submitted successfully!');
+                    document.getElementById('mobilePaymentForm').reset();
+                    hidePaymentForm();
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingOverlay').classList.remove('show');
+                alert('Network error. Please try again.');
+            });
+        });
+
+        // PWA Installation
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            setTimeout(() => {
+                document.getElementById('installBanner').classList.add('show');
+            }, 3000);
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted install');
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('installBanner').classList.remove('show');
+                });
+            }
+        }
+
+        function dismissBanner() {
+            document.getElementById('installBanner').classList.remove('show');
+        }
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => console.log('SW registered'))
+                .catch(error => console.log('SW registration failed'));
+        }
+
+        // Touch and swipe gestures
+        let startX, startY;
+        
+        document.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            if (!startX || !startY) return;
+            
+            const endX = e.changedTouches[0].clientX;
+            const endY = e.changedTouches[0].clientY;
+            
+            const diffX = startX - endX;
+            const diffY = startY - endY;
+            
+            // Horizontal swipe detection
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                if (diffX > 0) {
+                    // Swipe left
+                    console.log('Swiped left');
+                } else {
+                    // Swipe right
+                    console.log('Swiped right');
+                }
+            }
+        });
+
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (event) => {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+</body>
+</html>
