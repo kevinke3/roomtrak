@@ -18,6 +18,7 @@
                 <li><a href="{{ url_for('landlord_payments') }}"><i>💰</i> Payments</a></li>
                 <li><a href="{{ url_for('landlord_units') }}"><i>🏢</i> Units</a></li>
                 <li><a href="#" class="active"><i>👥</i> Tenants</a></li>
+                <li><a href="{{ url_for('landlord_add_tenant') }}"><i>➕</i> Add Tenant</a></li>
                 <li><a href="{{ url_for('landlord_maintenance_reports') }}"><i>🔧</i> Maintenance</a></li>
                 <li><a href="{{ url_for('landlord_tenant_payments') }}"><i>💳</i> Tenant Payments</a></li>
                 <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
@@ -47,6 +48,11 @@
                         KES {{ "{:,.0f}".format(tenants|sum(attribute='lease.monthly_rent')) }}
                     </div>
                     <p class="subtext">Expected monthly</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Actions</h3>
+                    <div class="number" style="font-size: 1.5em;">👥</div>
+                    <a href="{{ url_for('landlord_add_tenant') }}" class="btn btn-primary" style="margin-top: 10px; padding: 8px 16px;">Add Tenant</a>
                 </div>
             </div>
 
@@ -99,8 +105,11 @@
                                 <strong>Deposit:</strong> KES {{ "%.2f"|format(tenant_data.lease.security_deposit) }}
                             </td>
                             <td>
-                                <button class="btn btn-primary btn-sm" onclick="sendMessage({{ tenant_data.tenant.id }})">Message</button>
-                                <button class="btn btn-sm" onclick="viewDetails({{ tenant_data.tenant.id }})">Details</button>
+                                <div style="display: flex; flex-direction: column; gap: 5px;">
+                                    <button class="btn btn-primary btn-sm" onclick="sendMessage({{ tenant_data.tenant.id }})">Message</button>
+                                    <button class="btn btn-warning btn-sm" onclick="removeFromUnit({{ tenant_data.tenant.id }})">Remove from Unit</button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteTenant({{ tenant_data.tenant.id }})">Delete Tenant</button>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -110,6 +119,7 @@
                 <div class="text-center p-20">
                     <h3>No Active Tenants</h3>
                     <p>You don't have any active tenants at the moment.</p>
+                    <a href="{{ url_for('landlord_add_tenant') }}" class="btn btn-primary">Add Your First Tenant</a>
                 </div>
                 {% endif %}
             </div>
@@ -121,8 +131,44 @@
             alert('Message feature will be implemented soon for tenant ID: ' + tenantId);
         }
 
-        function viewDetails(tenantId) {
-            alert('View details for tenant ID: ' + tenantId);
+        function removeFromUnit(tenantId) {
+            if (confirm('Are you sure you want to remove this tenant from their unit? This will end their lease but keep their account.')) {
+                fetch(`/landlord/remove-tenant/${tenantId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Tenant removed from unit successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
+            }
+        }
+
+        function deleteTenant(tenantId) {
+            if (confirm('⚠️ WARNING: This will permanently delete the tenant account and all their data. This action cannot be undone!\n\nAre you sure you want to delete this tenant?')) {
+                fetch(`/landlord/delete-tenant/${tenantId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Tenant deleted successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
+            }
         }
     </script>
 </body>
