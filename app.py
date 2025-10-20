@@ -32,7 +32,28 @@ def init_db():
                 role='admin'
             )
             db.session.add(admin)
-            db.session.commit()
+            
+        # Create sample landlord if not exists
+        if not User.query.filter_by(role='landlord').first():
+            landlord = User(
+                username='landlord1',
+                email='landlord@roomtrack.com',
+                password='pass123',
+                role='landlord'
+            )
+            db.session.add(landlord)
+            
+        # Create sample tenant if not exists
+        if not User.query.filter_by(role='tenant').first():
+            tenant = User(
+                username='tenant1',
+                email='tenant@roomtrack.com',
+                password='pass123',
+                role='tenant'
+            )
+            db.session.add(tenant)
+            
+        db.session.commit()
 
 # Routes
 @app.route('/')
@@ -93,8 +114,12 @@ def landlord_dashboard():
     properties = Property.query.filter_by(landlord_id=current_user.id).all()
     total_rent = sum([unit.rent_amount for prop in properties for unit in prop.units if unit.status == 'occupied'])
     
-    # Payment statistics for charts
-    payments = Payment.query.join(Lease).join(Unit).filter(Unit.property_id.in_([p.id for p in properties])).all()
+    # Get payments for this landlord's properties
+    payments = []
+    for prop in properties:
+        for unit in prop.units:
+            for lease in unit.leases:
+                payments.extend(lease.payments)
     
     stats = {
         'total_properties': len(properties),
@@ -103,15 +128,20 @@ def landlord_dashboard():
         'total_rent': total_rent
     }
     
-    return render_template('landlord/dashboard.html', stats=stats, properties=properties)
+    return render_template('landlord/dashboard.html', stats=stats, properties=properties, payments=payments)
 
 @app.route('/landlord/payments')
 @login_required
 def landlord_payments():
     properties = Property.query.filter_by(landlord_id=current_user.id).all()
-    property_ids = [p.id for p in properties]
     
-    payments = Payment.query.join(Lease).join(Unit).filter(Unit.property_id.in_(property_ids)).all()
+    # Get all payments for this landlord's properties
+    payments = []
+    for prop in properties:
+        for unit in prop.units:
+            for lease in unit.leases:
+                payments.extend(lease.payments)
+    
     return render_template('landlord/payments.html', payments=payments)
 
 @app.route('/api/payment/approve/<int:payment_id>', methods=['POST'])
@@ -185,18 +215,15 @@ def submit_payment():
 @app.route('/api/landlord/payment-stats')
 @login_required
 def landlord_payment_stats():
-    properties = Property.query.filter_by(landlord_id=current_user.id).all()
-    property_ids = [p.id for p in properties]
-    
-    payments = Payment.query.join(Lease).join(Unit).filter(Unit.property_id.in_(property_ids)).all()
-    
-    # Sample data for charts
+    # Sample data for charts - in a real app, you'd query the database
     data = {
         'labels': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
         'datasets': [{
             'label': 'Rent Collection',
             'data': [65000, 59000, 80000, 81000, 56000, 75000],
-            'backgroundColor': '#3498db'
+            'backgroundColor': '#3498db',
+            'borderColor': '#2980b9',
+            'borderWidth': 2
         }]
     }
     
