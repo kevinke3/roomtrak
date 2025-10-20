@@ -1,11 +1,12 @@
 {
     "name": "RoomTrack Tenant",
     "short_name": "RoomTrack",
-    "description": "Intelligent property management platform",
-    "start_url": "/",
+    "description": "Easy rent payments and maintenance requests",
+    "start_url": "/tenant/dashboard",
     "display": "standalone",
     "background_color": "#3498db",
     "theme_color": "#3498db",
+    "orientation": "portrait",
     "icons": [
         {
             "src": "/static/images/icon-192.png",
@@ -17,5 +18,6 @@
             "sizes": "512x512",
             "type": "image/png"
         }
-    ]
+    ],
+    "categories": ["business", "finance", "productivity"]
 }
