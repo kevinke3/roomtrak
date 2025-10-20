@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="logo">
+                <h1>RoomTrack</h1>
+                <p>Intelligent Property Management</p>
+            </div>
+            
+            <div class="alert alert-error">
+                <h3>Error</h3>
+                <p>{{ error }}</p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">Return to Home</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
