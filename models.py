@@ -15,7 +15,7 @@ class User(UserMixin, db.Model):
     
     # Relationships
     landlord_properties = db.relationship('Property', backref='landlord', lazy=True)
-    tenant_leases = db.relationship('Lease', backref='tenant', lazy=True)
+    tenant_leases = db.relationship('Lease', backref='tenant', lazy=True, foreign_keys='Lease.tenant_id')
 
 class Property(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -48,6 +48,9 @@ class Lease(db.Model):
     monthly_rent = db.Column(db.Float, nullable=False)
     security_deposit = db.Column(db.Float, default=0)
     status = db.Column(db.String(20), default='active')
+    
+    # Relationship
+    payments = db.relationship('Payment', backref='lease', lazy=True)
 
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -60,9 +63,6 @@ class Payment(db.Model):
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
     receipt_generated = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationship
-    lease = db.relationship('Lease', backref='payments')
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
