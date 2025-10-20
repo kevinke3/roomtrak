@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Unit - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Landlord Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('landlord_dashboard') }}"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('landlord_payments') }}"><i>💰</i> Payments</a></li>
+                <li><a href="{{ url_for('landlord_units') }}"><i>🏢</i> Units</a></li>
+                <li><a href="{{ url_for('landlord_tenants') }}"><i>👥</i> Tenants</a></li>
+                <li><a href="{{ url_for('landlord_add_tenant') }}"><i>➕</i> Add Tenant</a></li>
+                <li><a href="#" class="active"><i>🏠</i> Add Unit</a></li>
+                <li><a href="{{ url_for('landlord_maintenance_reports') }}"><i>🔧</i> Maintenance</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>Add New Unit</h1>
+                <p>Create new rental units for your properties</p>
+            </div>
+
+            <div class="form-container">
+                <h3>Unit Information</h3>
+                <form id="createUnitForm">
+                    <div class="form-group">
+                        <label for="property_select">Property *</label>
+                        <select id="property_select" name="property_id" required>
+                            <option value="">Select Property</option>
+                            {% for property in properties %}
+                            <option value="{{ property.id }}">{{ property.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label for="unit_number">Unit Number *</label>
+                            <input type="text" id="unit_number" name="unit_number" required placeholder="e.g., A101">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="unit_name">Unit Name (Optional)</label>
+                            <input type="text" id="unit_name" name="unit_name" placeholder="e.g., Garden View Apartment">
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label for="rent_amount">Monthly Rent (KES) *</label>
+                            <input type="number" id="rent_amount" name="rent_amount" required min="0" step="0.01" placeholder="25000">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="bedrooms">Bedrooms</label>
+                            <select id="bedrooms" name="bedrooms">
+                                <option value="1">1 Bedroom</option>
+                                <option value="2">2 Bedrooms</option>
+                                <option value="3">3 Bedrooms</option>
+                                <option value="4">4 Bedrooms</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="bathrooms">Bathrooms</label>
+                            <select id="bathrooms" name="bathrooms">
+                                <option value="1">1 Bathroom</option>
+                                <option value="2">2 Bathrooms</option>
+                                <option value="3">3 Bathrooms</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Create Unit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('createUnitForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            data.rent_amount = parseFloat(data.rent_amount);
+            data.bedrooms = parseInt(data.bedrooms);
+            data.bathrooms = parseInt(data.bathrooms);
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.innerHTML = '<div class="loading"></div> Creating...';
+            submitBtn.disabled = true;
+            
+            fetch('/api/landlord/create-unit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Unit created successfully!');
+                    this.reset();
+                    // Redirect to units page
+                    setTimeout(() => {
+                        window.location.href = "{{ url_for('landlord_units') }}";
+                    }, 1500);
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            })
+            .finally(() => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>
