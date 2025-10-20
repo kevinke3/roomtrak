@@ -4,9 +4,6 @@ from datetime import datetime, timedelta
 
 def create_sample_data():
     with app.app_context():
-        # Create tables if they don't exist
-        db.create_all()
-        
         # Check if sample data already exists
         if User.query.filter_by(username='landlord1').first():
             print("Sample data already exists!")
@@ -78,13 +75,13 @@ def create_sample_data():
                 'transaction_code': 'MPESA123456',
                 'payment_method': 'mpesa',
                 'status': 'approved',
-                'days_ago': 30
+                'days_ago': 60
             },
             {
                 'transaction_code': 'MPESA789012',
                 'payment_method': 'mpesa', 
                 'status': 'approved',
-                'days_ago': 60
+                'days_ago': 30
             },
             {
                 'transaction_code': 'MPESA345678',
@@ -94,7 +91,7 @@ def create_sample_data():
             }
         ]
         
-        for i, payment_data in enumerate(payments_data):
+        for payment_data in payments_data:
             payment = Payment(
                 lease_id=lease.id,
                 amount=25000.00,
@@ -110,11 +107,11 @@ def create_sample_data():
         db.session.commit()
         print("Created payments...")
         
-        print("Sample data created successfully!")
-        print("\nDemo Accounts:")
-        print("Admin:     admin / admin123")
-        print("Landlord:  landlord1 / pass123") 
-        print("Tenant:    tenant1 / pass123")
+        print("✅ Sample data created successfully!")
+        print("\n📋 Demo Accounts:")
+        print("   Admin:    admin / admin123")
+        print("   Landlord: landlord1 / pass123") 
+        print("   Tenant:   tenant1 / pass123")
 
 if __name__ == '__main__':
     create_sample_data()
