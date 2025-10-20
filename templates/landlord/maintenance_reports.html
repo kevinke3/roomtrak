@@ -30,6 +30,29 @@
                 <p>View and manage maintenance requests from tenants</p>
             </div>
 
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Requests</h3>
+                    <div class="number">{{ maintenance_requests|length }}</div>
+                    <p class="subtext">All time</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Pending</h3>
+                    <div class="number">{{ maintenance_requests|selectattr('status', 'equalto', 'pending')|list|length }}</div>
+                    <p class="subtext">Awaiting action</p>
+                </div>
+                <div class="stat-card">
+                    <h3>In Progress</h3>
+                    <div class="number">{{ maintenance_requests|selectattr('status', 'equalto', 'in_progress')|list|length }}</div>
+                    <p class="subtext">Being addressed</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Completed</h3>
+                    <div class="number">{{ maintenance_requests|selectattr('status', 'equalto', 'completed')|list|length }}</div>
+                    <p class="subtext">Resolved</p>
+                </div>
+            </div>
+
             <div class="table-container">
                 <h3>All Maintenance Requests</h3>
                 
@@ -37,10 +60,8 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Tenant</th>
-                            <th>Unit</th>
-                            <th>Issue</th>
-                            <th>Description</th>
+                            <th>Tenant & Unit</th>
+                            <th>Issue Details</th>
                             <th>Urgency</th>
                             <th>Submitted</th>
                             <th>Status</th>
@@ -52,11 +73,14 @@
                         <tr>
                             <td>
                                 <strong>{{ request.tenant.full_name }}</strong><br>
-                                <small>{{ request.tenant.phone or 'No phone' }}</small>
+                                <small>Unit: {{ request.unit.unit_number }}</small><br>
+                                <small>Property: {{ request.unit.property.name }}</small>
                             </td>
-                            <td>{{ request.unit.unit_number }}</td>
-                            <td><strong>{{ request.title }}</strong></td>
-                            <td>{{ request.description[:100] }}{% if request.description|length > 100 %}...{% endif %}</td>
+                            <td>
+                                <strong>{{ request.title }}</strong><br>
+                                <p style="margin: 5px 0; color: var(--dark-gray);">{{ request.description }}</p>
+                                <small>Updated: {{ request.updated_at.strftime('%Y-%m-%d') }}</small>
+                            </td>
                             <td>
                                 <span class="status-badge 
                                     {% if request.urgency == 'emergency' %}status-rejected
@@ -69,7 +93,7 @@
                             <td>{{ request.created_at.strftime('%Y-%m-%d') }}</td>
                             <td>
                                 <span class="status-badge status-{{ request.status }}">
-                                    {{ request.status|title }}
+                                    {{ request.status.replace('_', ' ')|title }}
                                 </span>
                             </td>
                             <td>
@@ -78,6 +102,7 @@
                                     <option value="in_progress" {% if request.status == 'in_progress' %}selected{% endif %}>In Progress</option>
                                     <option value="completed" {% if request.status == 'completed' %}selected{% endif %}>Completed</option>
                                 </select>
+                                <button class="btn btn-primary btn-sm" style="margin-top: 5px;" onclick="contactTenant({{ request.tenant.id }})">Contact</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -86,7 +111,7 @@
                 {% else %}
                 <div class="text-center p-20">
                     <h3>No Maintenance Requests</h3>
-                    <p>No maintenance requests have been submitted yet.</p>
+                    <p>No maintenance requests have been submitted by tenants yet.</p>
                 </div>
                 {% endif %}
             </div>
@@ -106,10 +131,16 @@
             .then(data => {
                 if (data.success) {
                     alert('Maintenance status updated successfully!');
+                    // You can reload the page or update the status visually
+                    location.reload();
                 } else {
                     alert('Error: ' + data.error);
                 }
             });
+        }
+
+        function contactTenant(tenantId) {
+            alert('Contact feature will be implemented soon for tenant ID: ' + tenantId);
         }
     </script>
 </body>
