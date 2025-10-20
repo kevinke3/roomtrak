@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Units - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Landlord Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('landlord_dashboard') }}"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('landlord_payments') }}"><i>💰</i> Payments</a></li>
+                <li><a href="#" class="active"><i>🏢</i> Units</a></li>
+                <li><a href="{{ url_for('landlord_tenants') }}"><i>👥</i> Tenants</a></li>
+                <li><a href="{{ url_for('landlord_maintenance_reports') }}"><i>🔧</i> Maintenance</a></li>
+                <li><a href="{{ url_for('landlord_tenant_payments') }}"><i>💳</i> Tenant Payments</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>Unit Management</h1>
+                <p>Manage all your property units</p>
+            </div>
+
+            {% for property in properties %}
+            <div class="card">
+                <h3>{{ property.name }}</h3>
+                <p style="color: var(--gray); margin-bottom: 20px;">{{ property.address }}</p>
+                
+                <div class="table-container">
+                    <h4>Units in {{ property.name }}</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Unit Number</th>
+                                <th>Rent Amount</th>
+                                <th>Bedrooms</th>
+                                <th>Bathrooms</th>
+                                <th>Status</th>
+                                <th>Current Tenant</th>
+                                <th>Lease End</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for unit in property.units %}
+                            <tr>
+                                <td><strong>{{ unit.unit_number }}</strong></td>
+                                <td>KES {{ "%.2f"|format(unit.rent_amount) }}</td>
+                                <td>{{ unit.bedrooms }}</td>
+                                <td>{{ unit.bathrooms }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ unit.status }}">
+                                        {{ unit.status|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if unit.status == 'occupied' %}
+                                        {% for lease in unit.leases %}
+                                            {% if lease.status == 'active' %}
+                                                {{ lease.tenant.full_name }}<br>
+                                                <small>{{ lease.tenant.phone or 'No phone' }}</small>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span style="color: var(--gray);">Vacant</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if unit.status == 'occupied' %}
+                                        {% for lease in unit.leases %}
+                                            {% if lease.status == 'active' %}
+                                                {{ lease.end_date.strftime('%Y-%m-%d') }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span style="color: var(--gray);">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
