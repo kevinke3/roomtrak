@@ -19,6 +19,7 @@
                 <li><a href="{{ url_for('landlord_units') }}"><i>🏢</i> Units</a></li>
                 <li><a href="{{ url_for('landlord_tenants') }}"><i>👥</i> Tenants</a></li>
                 <li><a href="#" class="active"><i>➕</i> Add Tenant</a></li>
+                <li><a href="{{ url_for('landlord_add_unit') }}"><i>🏠</i> Add Unit</a></li>
                 <li><a href="{{ url_for('landlord_maintenance_reports') }}"><i>🔧</i> Maintenance</a></li>
                 <li><a href="{{ url_for('landlord_tenant_payments') }}"><i>💳</i> Tenant Payments</a></li>
                 <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
@@ -97,25 +98,26 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="start_date">Lease Start Date *</label>
-                            <input type="date" id="start_date" name="start_date" required>
+                            <label for="monthly_rent">Monthly Rent (KES) *</label>
+                            <input type="number" id="monthly_rent" name="monthly_rent" required min="0" step="0.01" placeholder="Enter rent amount" disabled>
+                            <small style="color: var(--gray);">You can modify the default rent amount</small>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="end_date">Lease End Date *</label>
-                            <input type="date" id="end_date" name="end_date" required>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="form-group">
+                                <label for="start_date">Lease Start Date *</label>
+                                <input type="date" id="start_date" name="start_date" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="end_date">Lease End Date *</label>
+                                <input type="date" id="end_date" name="end_date" required>
+                            </div>
                         </div>
                         
                         <div class="form-group">
                             <label for="security_deposit">Security Deposit (KES)</label>
                             <input type="number" id="security_deposit" name="security_deposit" value="0" min="0">
-                        </div>
-
-                        <!-- Add this field to the unit assignment form -->
-                        <div class="form-group">
-                            <label for="monthly_rent">Monthly Rent (KES) *</label>
-                            <input type="number" id="monthly_rent" name="monthly_rent" required min="0" step="0.01" placeholder="Enter rent amount">
-                            <small style="color: var(--gray);">You can modify the default rent amount</small>
                         </div>
                         
                         <button type="submit" class="btn btn-primary" disabled id="assignUnitBtn">Assign Unit</button>
@@ -172,10 +174,13 @@
         function loadVacantUnits() {
             const propertyId = document.getElementById('property_select').value;
             const unitSelect = document.getElementById('unit_select');
+            const rentInput = document.getElementById('monthly_rent');
             
             if (!propertyId) {
                 unitSelect.innerHTML = '<option value="">Select Property First</option>';
                 unitSelect.disabled = true;
+                rentInput.value = '';
+                rentInput.disabled = true;
                 return;
             }
             
@@ -184,11 +189,30 @@
                 .then(units => {
                     unitSelect.innerHTML = '<option value="">Select Unit</option>';
                     units.forEach(unit => {
-                        unitSelect.innerHTML += `<option value="${unit.id}">${unit.unit_number} - KES ${unit.rent_amount.toLocaleString()}/month (${unit.bedrooms} bed, ${unit.bathrooms} bath)</option>`;
+                        const displayName = unit.unit_name ? 
+                            `${unit.unit_number} - ${unit.unit_name} (KES ${unit.rent_amount.toLocaleString()}/month)` :
+                            `${unit.unit_number} - KES ${unit.rent_amount.toLocaleString()}/month`;
+                        
+                        unitSelect.innerHTML += `<option value="${unit.id}" data-rent="${unit.rent_amount}">${displayName}</option>`;
                     });
                     unitSelect.disabled = false;
                 });
         }
+
+        // Update rent when unit is selected
+        document.getElementById('unit_select').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const rentAmount = selectedOption.getAttribute('data-rent');
+            const rentInput = document.getElementById('monthly_rent');
+            
+            if (rentAmount) {
+                rentInput.value = rentAmount;
+                rentInput.disabled = false;
+            } else {
+                rentInput.value = '';
+                rentInput.disabled = true;
+            }
+        });
         
         // Assign Unit Form
         document.getElementById('assignUnitForm').addEventListener('submit', function(e) {
@@ -202,6 +226,8 @@
             const formData = new FormData(this);
             const data = Object.fromEntries(formData);
             data.tenant_id = currentTenantId;
+            data.monthly_rent = parseFloat(data.monthly_rent);
+            data.security_deposit = parseFloat(data.security_deposit);
             
             // Show loading state
             const submitBtn = this.querySelector('button[type="submit"]');
