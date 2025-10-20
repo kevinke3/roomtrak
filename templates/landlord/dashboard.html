@@ -16,11 +16,10 @@
                 <p>Landlord Portal</p>
             </div>
             <ul class="sidebar-nav">
-                <li><a href="#" class="active"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('landlord_dashboard') }}" class="active"><i>📊</i> Dashboard</a></li>
                 <li><a href="{{ url_for('landlord_payments') }}"><i>💰</i> Payments</a></li>
-                <li><a href="#"><i>🏢</i> Properties</a></li>
-                <li><a href="#"><i>👥</i> Tenants</a></li>
-                <li><a href="#"><i>💬</i> Messages</a></li>
+                <li><a href="{{ url_for('landlord_properties') }}"><i>🏢</i> Properties</a></li>
+                <li><a href="{{ url_for('landlord_tenants') }}"><i>👥</i> Tenants</a></li>
                 <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
             </ul>
         </div>
@@ -37,18 +36,22 @@
                 <div class="stat-card">
                     <h3>Total Properties</h3>
                     <div class="number">{{ stats.total_properties }}</div>
+                    <p class="subtext">Managed properties</p>
                 </div>
                 <div class="stat-card">
                     <h3>Total Units</h3>
                     <div class="number">{{ stats.total_units }}</div>
+                    <p class="subtext">All units</p>
                 </div>
                 <div class="stat-card">
                     <h3>Occupied Units</h3>
                     <div class="number">{{ stats.occupied_units }}</div>
+                    <p class="subtext">{{ stats.occupancy_rate }}% occupancy</p>
                 </div>
                 <div class="stat-card">
                     <h3>Monthly Revenue</h3>
-                    <div class="number">KES {{ "%.2f"|format(stats.total_rent) }}</div>
+                    <div class="number">KES {{ "{:,.2f}".format(stats.total_rent) }}</div>
+                    <p class="subtext">Expected monthly income</p>
                 </div>
             </div>
 
@@ -58,9 +61,21 @@
                 <canvas id="rentChart" width="400" height="200"></canvas>
             </div>
 
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 30px;">
+                <div class="chart-container">
+                    <h3>Occupancy Rate</h3>
+                    <canvas id="occupancyChart" width="400" height="300"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Payment Status</h3>
+                    <canvas id="paymentChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+
             <!-- Recent Payments -->
             <div class="table-container">
                 <h3>Recent Payments</h3>
+                {% if payments %}
                 <table>
                     <thead>
                         <tr>
@@ -68,43 +83,54 @@
                             <th>Property</th>
                             <th>Amount</th>
                             <th>Date</th>
+                            <th>Transaction Code</th>
                             <th>Status</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for payment in payments[:5] %}
+                        {% for payment in payments %}
                         <tr>
                             <td>{{ payment.lease.tenant.username }}</td>
                             <td>{{ payment.lease.unit.property.name }}</td>
                             <td>KES {{ "%.2f"|format(payment.amount) }}</td>
                             <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ payment.transaction_code }}</td>
                             <td>
-                                <span class="status-{{ payment.status }}">
+                                <span class="status-badge status-{{ payment.status }}">
                                     {{ payment.status|title }}
                                 </span>
                             </td>
                             <td>
                                 {% if payment.status == 'pending' %}
-                                <button class="btn btn-primary" onclick="approvePayment({{ payment.id }})">
-                                    Approve
-                                </button>
+                                <div style="display: flex; gap: 5px;">
+                                    <button class="btn btn-success btn-sm" onclick="approvePayment({{ payment.id }})">Approve</button>
+                                    <button class="btn btn-danger btn-sm" onclick="rejectPayment({{ payment.id }})">Reject</button>
+                                </div>
+                                {% else %}
+                                <span style="color: var(--gray);">Processed</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+                {% else %}
+                <div class="text-center p-20">
+                    <h3>No Payments Yet</h3>
+                    <p>You haven't received any payments yet.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 
     <script>
         // Rent Collection Chart
-        const ctx = document.getElementById('rentChart').getContext('2d');
         fetch('/api/landlord/payment-stats')
             .then(response => response.json())
             .then(data => {
+                const ctx = document.getElementById('rentChart').getContext('2d');
                 new Chart(ctx, {
                     type: 'line',
                     data: data,
@@ -120,19 +146,88 @@
                 });
             });
 
-        function approvePayment(paymentId) {
-            fetch(`/api/payment/approve/${paymentId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
+        // Occupancy Chart
+        fetch('/api/landlord/occupancy-stats')
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    location.reload();
-                }
+                const ctx = document.getElementById('occupancyChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
             });
+
+        // Payment Status Chart
+        const paymentCtx = document.getElementById('paymentChart').getContext('2d');
+        new Chart(paymentCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Approved', 'Pending', 'Rejected'],
+                datasets: [{
+                    data: [70, 20, 10],
+                    backgroundColor: ['#27ae60', '#f39c12', '#e74c3c']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Payment Distribution'
+                    }
+                }
+            }
+        });
+
+        function approvePayment(paymentId) {
+            if (confirm('Are you sure you want to approve this payment?')) {
+                fetch(`/api/payment/approve/${paymentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Payment approved successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
+            }
+        }
+
+        function rejectPayment(paymentId) {
+            if (confirm('Are you sure you want to reject this payment?')) {
+                fetch(`/api/payment/reject/${paymentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Payment rejected!');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
+            }
         }
     </script>
 </body>
