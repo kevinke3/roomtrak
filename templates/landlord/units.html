@@ -35,6 +35,25 @@
                 <h3>{{ property.name }}</h3>
                 <p style="color: var(--gray); margin-bottom: 20px;">{{ property.address }}</p>
                 
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="stat-card" style="padding: 15px;">
+                        <h3>Total Units</h3>
+                        <div class="number">{{ property.total_units }}</div>
+                    </div>
+                    <div class="stat-card" style="padding: 15px;">
+                        <h3>Occupied</h3>
+                        <div class="number">{{ property.occupied_units }}</div>
+                    </div>
+                    <div class="stat-card" style="padding: 15px;">
+                        <h3>Vacant</h3>
+                        <div class="number">{{ property.total_units - property.occupied_units }}</div>
+                    </div>
+                    <div class="stat-card" style="padding: 15px;">
+                        <h3>Occupancy Rate</h3>
+                        <div class="number">{{ "%.1f"|format((property.occupied_units / property.total_units * 100) if property.total_units > 0 else 0) }}%</div>
+                    </div>
+                </div>
+                
                 <div class="table-container">
                     <h4>Units in {{ property.name }}</h4>
                     <table>
@@ -46,6 +65,7 @@
                                 <th>Bathrooms</th>
                                 <th>Status</th>
                                 <th>Current Tenant</th>
+                                <th>Contact</th>
                                 <th>Lease End</th>
                             </tr>
                         </thead>
@@ -66,11 +86,22 @@
                                         {% for lease in unit.leases %}
                                             {% if lease.status == 'active' %}
                                                 {{ lease.tenant.full_name }}<br>
-                                                <small>{{ lease.tenant.phone or 'No phone' }}</small>
+                                                <small>{{ lease.tenant.email }}</small>
                                             {% endif %}
                                         {% endfor %}
                                     {% else %}
                                         <span style="color: var(--gray);">Vacant</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if unit.status == 'occupied' %}
+                                        {% for lease in unit.leases %}
+                                            {% if lease.status == 'active' %}
+                                                {{ lease.tenant.phone or 'No phone' }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span style="color: var(--gray);">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -91,6 +122,14 @@
                 </div>
             </div>
             {% endfor %}
+
+            {% if not properties %}
+            <div class="card text-center">
+                <h3>No Properties Found</h3>
+                <p>You haven't added any properties yet.</p>
+                <button class="btn btn-primary" onclick="location.href='{{ url_for('landlord_properties') }}'">Manage Properties</button>
+            </div>
+            {% endif %}
         </div>
     </div>
 </body>
