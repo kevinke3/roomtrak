@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tenant Dashboard - RoomTrack</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 </head>
 <body>
@@ -16,11 +17,9 @@
                 <p>Tenant Portal</p>
             </div>
             <ul class="sidebar-nav">
-                <li><a href="#" class="active"><i>📊</i> Dashboard</a></li>
-                <li><a href="#"><i>💰</i> Make Payment</a></li>
-                <li><a href="#"><i>📝</i> Payment History</a></li>
-                <li><a href="#"><i>🔧</i> Maintenance</a></li>
-                <li><a href="#"><i>💬</i> Messages</a></li>
+                <li><a href="{{ url_for('tenant_dashboard') }}" class="active"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('tenant_payments') }}"><i>💰</i> Payment History</a></li>
+                <li><a href="{{ url_for('tenant_maintenance') }}"><i>🔧</i> Maintenance</a></li>
                 <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
             </ul>
         </div>
@@ -38,47 +37,71 @@
                 <div class="stat-card">
                     <h3>Current Unit</h3>
                     <div class="number">{{ lease.unit.unit_number }}</div>
+                    <p class="subtext">{{ lease.unit.property.name }}</p>
                 </div>
                 <div class="stat-card">
                     <h3>Monthly Rent</h3>
                     <div class="number">KES {{ "%.2f"|format(lease.monthly_rent) }}</div>
+                    <p class="subtext">Monthly payment</p>
                 </div>
                 <div class="stat-card">
                     <h3>Next Due Date</h3>
-                    <div class="number">{{ (lease.start_date + timedelta(days=30)).strftime('%d/%m/%Y') }}</div>
+                    <div class="number">
+                        {% if next_due_date %}
+                            {{ next_due_date.strftime('%d/%m/%Y') }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </div>
+                    <p class="subtext">Next payment date</p>
                 </div>
                 <div class="stat-card">
                     <h3>Lease Status</h3>
                     <div class="number" style="color: var(--success);">{{ lease.status|title }}</div>
+                    <p class="subtext">Active until {{ lease.end_date.strftime('%d/%m/%Y') }}</p>
                 </div>
             </div>
 
+            <!-- Payment History Chart -->
+            <div class="chart-container">
+                <h3>Your Payment History</h3>
+                <canvas id="paymentHistoryChart" width="400" height="200"></canvas>
+            </div>
+
             <!-- Payment Submission -->
-            <div class="form-container">
+            <div class="payment-form">
                 <h3>Submit Payment</h3>
                 <form id="paymentForm">
-                    <div class="form-group">
-                        <label for="transaction_code">Transaction Code</label>
-                        <input type="text" id="transaction_code" name="transaction_code" required 
-                               placeholder="Enter M-Pesa or Bank transaction code">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label for="transaction_code">Transaction Code</label>
+                            <input type="text" id="transaction_code" name="transaction_code" required 
+                                   placeholder="Enter M-Pesa or Bank transaction code">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="payment_method">Payment Method</label>
+                            <select id="payment_method" name="payment_method" required>
+                                <option value="">Select method</option>
+                                <option value="mpesa">M-Pesa</option>
+                                <option value="bank">Bank Transfer</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="payment_method">Payment Method</label>
-                        <select id="payment_method" name="payment_method" required>
-                            <option value="">Select method</option>
-                            <option value="mpesa">M-Pesa</option>
-                            <option value="bank">Bank Transfer</option>
-                        </select>
+                        <label for="payment_amount">Amount (KES)</label>
+                        <input type="number" id="payment_amount" name="amount" value="{{ "%.2f"|format(lease.monthly_rent) }}" required readonly>
                     </div>
                     
                     <button type="submit" class="btn btn-primary">Submit Payment</button>
                 </form>
             </div>
 
-            <!-- Payment History -->
+            <!-- Recent Payments -->
             <div class="table-container">
-                <h3>Payment History</h3>
+                <h3>Recent Payments</h3>
+                {% if payments %}
                 <table>
                     <thead>
                         <tr>
@@ -90,14 +113,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for payment in payments %}
+                        {% for payment in payments[:5] %}
                         <tr>
                             <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
                             <td>KES {{ "%.2f"|format(payment.amount) }}</td>
                             <td>{{ payment.payment_method|upper }}</td>
                             <td>{{ payment.transaction_code }}</td>
                             <td>
-                                <span class="status-{{ payment.status }}">
+                                <span class="status-badge status-{{ payment.status }}">
                                     {{ payment.status|title }}
                                 </span>
                             </td>
@@ -105,24 +128,72 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                {% else %}
+                <div class="text-center p-20">
+                    <p>No payments made yet.</p>
+                </div>
+                {% endif %}
             </div>
+
+            <!-- Notifications -->
+            {% if notifications %}
+            <div class="card">
+                <h3>Recent Notifications</h3>
+                {% for notification in notifications %}
+                <div class="notification-item {% if not notification.is_read %}unread{% endif %}">
+                    <strong>{{ notification.title }}</strong>
+                    <p>{{ notification.message }}</p>
+                    <small>{{ notification.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             {% else %}
-            <div class="stat-card">
+            <div class="card text-center">
                 <h3>No Active Lease</h3>
                 <p>Please contact your landlord for lease information.</p>
+                <button class="btn btn-primary">Contact Landlord</button>
             </div>
             {% endif %}
         </div>
     </div>
 
     <script>
+        // Payment History Chart
+        fetch('/api/tenant/payment-history')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('paymentHistoryChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Your Payment History'
+                            }
+                        }
+                    }
+                });
+            });
+
         document.getElementById('paymentForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const formData = {
                 transaction_code: document.getElementById('transaction_code').value,
-                payment_method: document.getElementById('payment_method').value
+                payment_method: document.getElementById('payment_method').value,
+                amount: document.getElementById('payment_amount').value
             };
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.innerHTML = '<div class="loading"></div> Submitting...';
+            submitBtn.disabled = true;
             
             fetch('/tenant/submit-payment', {
                 method: 'POST',
@@ -134,11 +205,19 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Payment submitted successfully!');
+                    alert('Payment submitted successfully! Waiting for landlord approval.');
+                    document.getElementById('paymentForm').reset();
                     location.reload();
                 } else {
-                    alert('Error submitting payment: ' + data.error);
+                    alert('Error: ' + data.error);
                 }
+            })
+            .catch(error => {
+                alert('Network error. Please try again.');
+            })
+            .finally(() => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
             });
         });
 
