@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenant Dashboard - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Tenant Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="#" class="active"><i>📊</i> Dashboard</a></li>
+                <li><a href="#"><i>💰</i> Make Payment</a></li>
+                <li><a href="#"><i>📝</i> Payment History</a></li>
+                <li><a href="#"><i>🔧</i> Maintenance</a></li>
+                <li><a href="#"><i>💬</i> Messages</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h1>Welcome, {{ current_user.username }}</h1>
+                <p>Your rental management dashboard</p>
+            </div>
+
+            {% if lease %}
+            <!-- Lease Information -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Current Unit</h3>
+                    <div class="number">{{ lease.unit.unit_number }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Monthly Rent</h3>
+                    <div class="number">KES {{ "%.2f"|format(lease.monthly_rent) }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Next Due Date</h3>
+                    <div class="number">{{ (lease.start_date + timedelta(days=30)).strftime('%d/%m/%Y') }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Lease Status</h3>
+                    <div class="number" style="color: var(--success);">{{ lease.status|title }}</div>
+                </div>
+            </div>
+
+            <!-- Payment Submission -->
+            <div class="form-container">
+                <h3>Submit Payment</h3>
+                <form id="paymentForm">
+                    <div class="form-group">
+                        <label for="transaction_code">Transaction Code</label>
+                        <input type="text" id="transaction_code" name="transaction_code" required 
+                               placeholder="Enter M-Pesa or Bank transaction code">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="payment_method">Payment Method</label>
+                        <select id="payment_method" name="payment_method" required>
+                            <option value="">Select method</option>
+                            <option value="mpesa">M-Pesa</option>
+                            <option value="bank">Bank Transfer</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Submit Payment</button>
+                </form>
+            </div>
+
+            <!-- Payment History -->
+            <div class="table-container">
+                <h3>Payment History</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Transaction Code</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+                            <td>KES {{ "%.2f"|format(payment.amount) }}</td>
+                            <td>{{ payment.payment_method|upper }}</td>
+                            <td>{{ payment.transaction_code }}</td>
+                            <td>
+                                <span class="status-{{ payment.status }}">
+                                    {{ payment.status|title }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="stat-card">
+                <h3>No Active Lease</h3>
+                <p>Please contact your landlord for lease information.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('paymentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                transaction_code: document.getElementById('transaction_code').value,
+                payment_method: document.getElementById('payment_method').value
+            };
+            
+            fetch('/tenant/submit-payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Payment submitted successfully!');
+                    location.reload();
+                } else {
+                    alert('Error submitting payment: ' + data.error);
+                }
+            });
+        });
+
+        // PWA Installation
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => console.log('SW registered'))
+                .catch(error => console.log('SW registration failed'));
+        }
+    </script>
+</body>
+</html>

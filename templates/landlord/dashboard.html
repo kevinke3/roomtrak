@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Landlord Dashboard - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Landlord Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="#" class="active"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('landlord_payments') }}"><i>💰</i> Payments</a></li>
+                <li><a href="#"><i>🏢</i> Properties</a></li>
+                <li><a href="#"><i>👥</i> Tenants</a></li>
+                <li><a href="#"><i>💬</i> Messages</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h1>Welcome, {{ current_user.username }}</h1>
+                <p>Here's your property management overview</p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Properties</h3>
+                    <div class="number">{{ stats.total_properties }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Units</h3>
+                    <div class="number">{{ stats.total_units }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Occupied Units</h3>
+                    <div class="number">{{ stats.occupied_units }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Monthly Revenue</h3>
+                    <div class="number">KES {{ "%.2f"|format(stats.total_rent) }}</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="chart-container">
+                <h3>Rent Collection Trends</h3>
+                <canvas id="rentChart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- Recent Payments -->
+            <div class="table-container">
+                <h3>Recent Payments</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Property</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments[:5] %}
+                        <tr>
+                            <td>{{ payment.lease.tenant.username }}</td>
+                            <td>{{ payment.lease.unit.property.name }}</td>
+                            <td>KES {{ "%.2f"|format(payment.amount) }}</td>
+                            <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <span class="status-{{ payment.status }}">
+                                    {{ payment.status|title }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if payment.status == 'pending' %}
+                                <button class="btn btn-primary" onclick="approvePayment({{ payment.id }})">
+                                    Approve
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Rent Collection Chart
+        const ctx = document.getElementById('rentChart').getContext('2d');
+        fetch('/api/landlord/payment-stats')
+            .then(response => response.json())
+            .then(data => {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Monthly Rent Collection'
+                            }
+                        }
+                    }
+                });
+            });
+
+        function approvePayment(paymentId) {
+            fetch(`/api/payment/approve/${paymentId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
