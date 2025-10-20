@@ -16,8 +16,10 @@
             <ul class="sidebar-nav">
                 <li><a href="{{ url_for('landlord_dashboard') }}"><i>📊</i> Dashboard</a></li>
                 <li><a href="{{ url_for('landlord_payments') }}"><i>💰</i> Payments</a></li>
-                <li><a href="{{ url_for('landlord_properties') }}"><i>🏢</i> Properties</a></li>
+                <li><a href="{{ url_for('landlord_units') }}"><i>🏢</i> Units</a></li>
                 <li><a href="#" class="active"><i>👥</i> Tenants</a></li>
+                <li><a href="{{ url_for('landlord_maintenance_reports') }}"><i>🔧</i> Maintenance</a></li>
+                <li><a href="{{ url_for('landlord_tenant_payments') }}"><i>💳</i> Tenant Payments</a></li>
                 <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
             </ul>
         </div>
@@ -25,22 +27,41 @@
         <div class="main-content">
             <div class="header">
                 <h1>Tenant Management</h1>
-                <p>Manage your tenants and leases</p>
+                <p>View and manage all your tenants</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Tenants</h3>
+                    <div class="number">{{ tenants|length }}</div>
+                    <p class="subtext">Active tenants</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Occupied Units</h3>
+                    <div class="number">{{ tenants|length }}</div>
+                    <p class="subtext">Currently rented</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Monthly Revenue</h3>
+                    <div class="number">
+                        KES {{ "{:,.0f}".format(tenants|sum(attribute='lease.monthly_rent')) }}
+                    </div>
+                    <p class="subtext">Expected monthly</p>
+                </div>
             </div>
 
             <div class="table-container">
-                <h3>Active Tenants</h3>
+                <h3>All Tenants</h3>
                 
                 {% if tenants %}
                 <table>
                     <thead>
                         <tr>
-                            <th>Tenant</th>
-                            <th>Property</th>
-                            <th>Unit</th>
-                            <th>Monthly Rent</th>
-                            <th>Lease Period</th>
-                            <th>Contact</th>
+                            <th>Tenant Details</th>
+                            <th>Contact Information</th>
+                            <th>Property & Unit</th>
+                            <th>Lease Information</th>
+                            <th>Rent</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -48,21 +69,38 @@
                         {% for tenant_data in tenants %}
                         <tr>
                             <td>
-                                <strong>{{ tenant_data.tenant.username }}</strong><br>
-                                <small>{{ tenant_data.tenant.email }}</small>
-                            </td>
-                            <td>{{ tenant_data.property.name }}</td>
-                            <td>{{ tenant_data.unit.unit_number }}</td>
-                            <td>KES {{ "%.2f"|format(tenant_data.lease.monthly_rent) }}</td>
-                            <td>
-                                {{ tenant_data.lease.start_date.strftime('%Y-%m-%d') }} to<br>
-                                {{ tenant_data.lease.end_date.strftime('%Y-%m-%d') }}
+                                <strong>{{ tenant_data.tenant.full_name }}</strong><br>
+                                <small>ID: {{ tenant_data.tenant.id_number }}</small><br>
+                                <small>Username: @{{ tenant_data.tenant.username }}</small>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-primary">Message</button>
+                                <strong>Email:</strong> {{ tenant_data.tenant.email }}<br>
+                                <strong>Phone:</strong> {{ tenant_data.tenant.phone or 'Not provided' }}<br>
+                                {% if tenant_data.tenant.passport_number %}
+                                <strong>Passport:</strong> {{ tenant_data.tenant.passport_number }}
+                                {% endif %}
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-primary">View Details</button>
+                                <strong>Property:</strong> {{ tenant_data.property.name }}<br>
+                                <strong>Unit:</strong> {{ tenant_data.unit.unit_number }}<br>
+                                <strong>Type:</strong> {{ tenant_data.unit.bedrooms }} bed, {{ tenant_data.unit.bathrooms }} bath
+                            </td>
+                            <td>
+                                <strong>Start:</strong> {{ tenant_data.lease.start_date.strftime('%Y-%m-%d') }}<br>
+                                <strong>End:</strong> {{ tenant_data.lease.end_date.strftime('%Y-%m-%d') }}<br>
+                                <strong>Status:</strong> 
+                                <span class="status-badge status-{{ tenant_data.lease.status }}">
+                                    {{ tenant_data.lease.status|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>KES {{ "%.2f"|format(tenant_data.lease.monthly_rent) }}</strong><br>
+                                <small>per month</small><br>
+                                <strong>Deposit:</strong> KES {{ "%.2f"|format(tenant_data.lease.security_deposit) }}
+                            </td>
+                            <td>
+                                <button class="btn btn-primary btn-sm" onclick="sendMessage({{ tenant_data.tenant.id }})">Message</button>
+                                <button class="btn btn-sm" onclick="viewDetails({{ tenant_data.tenant.id }})">Details</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -77,5 +115,15 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function sendMessage(tenantId) {
+            alert('Message feature will be implemented soon for tenant ID: ' + tenantId);
+        }
+
+        function viewDetails(tenantId) {
+            alert('View details for tenant ID: ' + tenantId);
+        }
+    </script>
 </body>
 </html>
