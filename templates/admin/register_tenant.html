@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Tenant - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Admin Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('admin_dashboard') }}"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('admin_users') }}"><i>👥</i> Users</a></li>
+                <li><a href="{{ url_for('admin_tenants') }}"><i>👨‍👩‍👧‍👦</i> Tenants</a></li>
+                <li><a href="{{ url_for('admin_register_tenant') }}" class="active"><i>➕</i> Register Tenant</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>Register New Tenant</h1>
+                <p>Register tenant and assign them a unit</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <!-- Tenant Registration Form -->
+                <div class="form-container">
+                    <h3>Tenant Information</h3>
+                    <form id="registerTenantForm">
+                        <div class="form-group">
+                            <label for="full_name">Full Name *</label>
+                            <input type="text" id="full_name" name="full_name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="id_number">ID Number *</label>
+                            <input type="text" id="id_number" name="id_number" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="passport_number">Passport Number (Optional)</label>
+                            <input type="text" id="passport_number" name="passport_number">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">Email Address *</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" name="phone">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="username">Username *</label>
+                            <input type="text" id="username" name="username" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Password *</label>
+                            <input type="password" id="password" name="password" required>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Register Tenant</button>
+                    </form>
+                </div>
+
+                <!-- Unit Assignment Form -->
+                <div class="form-container">
+                    <h3>Assign Unit</h3>
+                    <form id="assignUnitForm">
+                        <div class="form-group">
+                            <label for="property_select">Property</label>
+                            <select id="property_select" name="property_id" onchange="loadVacantUnits()">
+                                <option value="">Select Property</option>
+                                {% for property in properties %}
+                                <option value="{{ property.id }}">{{ property.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="unit_select">Available Units</label>
+                            <select id="unit_select" name="unit_id" required disabled>
+                                <option value="">Select Property First</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="start_date">Lease Start Date *</label>
+                            <input type="date" id="start_date" name="start_date" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="end_date">Lease End Date *</label>
+                            <input type="date" id="end_date" name="end_date" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="security_deposit">Security Deposit (KES)</label>
+                            <input type="number" id="security_deposit" name="security_deposit" value="0" min="0">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary" disabled id="assignUnitBtn">Assign Unit</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTenantId = null;
+        
+        // Register Tenant Form
+        document.getElementById('registerTenantForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            fetch('/admin/register-tenant', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Tenant registered successfully!');
+                    currentTenantId = result.tenant_id;
+                    document.getElementById('assignUnitBtn').disabled = false;
+                    // Pre-fill some fields in unit assignment
+                    document.getElementById('start_date').valueAsDate = new Date();
+                    const endDate = new Date();
+                    endDate.setFullYear(endDate.getFullYear() + 1);
+                    document.getElementById('end_date').valueAsDate = endDate;
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            });
+        });
+        
+        // Load vacant units when property is selected
+        function loadVacantUnits() {
+            const propertyId = document.getElementById('property_select').value;
+            const unitSelect = document.getElementById('unit_select');
+            
+            if (!propertyId) {
+                unitSelect.innerHTML = '<option value="">Select Property First</option>';
+                unitSelect.disabled = true;
+                return;
+            }
+            
+            fetch(`/api/property/${propertyId}/vacant-units`)
+                .then(response => response.json())
+                .then(units => {
+                    unitSelect.innerHTML = '<option value="">Select Unit</option>';
+                    units.forEach(unit => {
+                        unitSelect.innerHTML += `<option value="${unit.id}">${unit.unit_number} - KES ${unit.rent_amount}/month (${unit.bedrooms} bed, ${unit.bathrooms} bath)</option>`;
+                    });
+                    unitSelect.disabled = false;
+                });
+        }
+        
+        // Assign Unit Form
+        document.getElementById('assignUnitForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!currentTenantId) {
+                alert('Please register the tenant first');
+                return;
+            }
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            data.tenant_id = currentTenantId;
+            
+            fetch('/admin/assign-unit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Unit assigned successfully!');
+                    // Reset forms
+                    document.getElementById('registerTenantForm').reset();
+                    document.getElementById('assignUnitForm').reset();
+                    document.getElementById('assignUnitBtn').disabled = true;
+                    currentTenantId = null;
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            });
+        });
+        
+        // Set default dates
+        document.getElementById('start_date').valueAsDate = new Date();
+        const endDate = new Date();
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        document.getElementById('end_date').valueAsDate = endDate;
+    </script>
+</body>
+</html>
