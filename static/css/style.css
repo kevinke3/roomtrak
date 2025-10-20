@@ -570,3 +570,413 @@ tr:hover {
     border-color: var(--primary-blue);
     color: var(--dark-blue);
 }
+
+/* Mobile-First Design for Tenant Portal */
+.tenant-mobile-view {
+    display: none;
+}
+
+/* Mobile Navigation */
+.mobile-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border-top: 1px solid var(--light-blue);
+    z-index: 1000;
+    padding: 10px 0;
+}
+
+.mobile-nav-items {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: var(--gray);
+    font-size: 0.7em;
+    padding: 5px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.mobile-nav-item.active {
+    color: var(--primary-blue);
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.mobile-nav-item i {
+    font-size: 1.2em;
+    margin-bottom: 2px;
+}
+
+/* Mobile Header */
+.mobile-header {
+    display: none;
+    background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+    color: var(--white);
+    padding: 15px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.mobile-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mobile-header h1 {
+    font-size: 1.2em;
+    margin: 0;
+    color: var(--white);
+}
+
+.mobile-menu-btn {
+    background: none;
+    border: none;
+    color: var(--white);
+    font-size: 1.5em;
+    cursor: pointer;
+}
+
+/* Mobile Cards */
+.mobile-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 15px;
+    margin: 10px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-left: 4px solid var(--primary-blue);
+}
+
+.mobile-card h3 {
+    color: var(--dark-gray);
+    margin-bottom: 10px;
+    font-size: 1.1em;
+}
+
+/* Quick Actions */
+.quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.quick-action-btn {
+    background: var(--white);
+    border: 2px solid var(--light-blue);
+    border-radius: 10px;
+    padding: 15px 10px;
+    text-align: center;
+    text-decoration: none;
+    color: var(--dark-gray);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.quick-action-btn:hover {
+    border-color: var(--primary-blue);
+    transform: translateY(-2px);
+}
+
+.quick-action-btn i {
+    font-size: 1.5em;
+    color: var(--primary-blue);
+}
+
+.quick-action-btn span {
+    font-size: 0.8em;
+    font-weight: 600;
+}
+
+/* Mobile Stats */
+.mobile-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.mobile-stat {
+    background: var(--white);
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.mobile-stat .number {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--primary-blue);
+    margin-bottom: 5px;
+}
+
+.mobile-stat .label {
+    font-size: 0.8em;
+    color: var(--gray);
+}
+
+/* Mobile Forms */
+.mobile-form {
+    background: var(--white);
+    padding: 20px;
+    border-radius: 12px;
+    margin: 10px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.mobile-form-group {
+    margin-bottom: 15px;
+}
+
+.mobile-form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--dark-gray);
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.mobile-form-group input,
+.mobile-form-group select,
+.mobile-form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--light-blue);
+    border-radius: 8px;
+    font-size: 16px; /* Prevents zoom on iOS */
+    background: var(--white);
+}
+
+/* Mobile Tables */
+.mobile-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.mobile-table th,
+.mobile-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--light-blue);
+}
+
+.mobile-table th {
+    background: var(--light-blue);
+    color: var(--dark-gray);
+    font-weight: 600;
+}
+
+/* Mobile Notifications */
+.mobile-notification {
+    background: var(--white);
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border-left: 4px solid var(--warning);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.mobile-notification.unread {
+    background: #fff9e6;
+    border-left-color: var(--primary-blue);
+}
+
+/* Mobile Payment Items */
+.payment-item {
+    background: var(--white);
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 10px;
+    border-left: 4px solid var(--success);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.payment-item.pending {
+    border-left-color: var(--warning);
+}
+
+.payment-item.rejected {
+    border-left-color: var(--danger);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    /* Hide desktop elements for tenants */
+    .tenant-desktop-view {
+        display: none !important;
+    }
+    
+    .tenant-mobile-view {
+        display: block;
+    }
+    
+    .mobile-header {
+        display: block;
+    }
+    
+    .mobile-nav {
+        display: block;
+    }
+    
+    /* Main content padding for mobile */
+    .mobile-main-content {
+        padding: 70px 15px 80px 15px;
+        min-height: 100vh;
+        background: var(--light-gray);
+    }
+    
+    /* Mobile-specific adjustments */
+    .btn {
+        padding: 12px 20px;
+        font-size: 16px; /* Better touch targets */
+        min-height: 44px; /* Minimum touch target size */
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 16px; /* Prevents zoom on iOS */
+        min-height: 44px; /* Better touch targets */
+    }
+    
+    /* Compact stats for mobile */
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .stat-card {
+        padding: 15px;
+    }
+    
+    .stat-card .number {
+        font-size: 1.8em;
+    }
+    
+    /* Mobile table container */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+    
+    table {
+        min-width: 600px; /* Allow horizontal scroll on small screens */
+    }
+    
+    /* Mobile modals */
+    .modal-content {
+        margin: 20px 10px;
+        border-radius: 12px;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+    .mobile-main-content {
+        padding: 60px 10px 70px 10px;
+    }
+    
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+    
+    .mobile-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .mobile-card {
+        padding: 12px;
+    }
+    
+    .mobile-form {
+        padding: 15px;
+    }
+}
+
+/* PWA Styles */
+.app-install-banner {
+    position: fixed;
+    bottom: 80px;
+    left: 10px;
+    right: 10px;
+    background: var(--white);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    display: none;
+    z-index: 1001;
+    border-left: 4px solid var(--primary-blue);
+}
+
+.app-install-banner.show {
+    display: block;
+}
+
+.install-btn {
+    background: var(--primary-blue);
+    color: var(--white);
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.dismiss-btn {
+    background: none;
+    border: none;
+    color: var(--gray);
+    cursor: pointer;
+}
+
+/* Loading states */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255,255,255,0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    display: none;
+}
+
+.loading-overlay.show {
+    display: flex;
+}
+
+/* Swipe gestures for mobile */
+.swipe-area {
+    touch-action: pan-y;
+}
+
+/* Better touch targets for mobile */
+.touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
