@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance - RoomTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RoomTrack</h2>
+                <p>Tenant Portal</p>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('tenant_dashboard') }}"><i>📊</i> Dashboard</a></li>
+                <li><a href="{{ url_for('tenant_payments') }}"><i>💰</i> Payment History</a></li>
+                <li><a href="#" class="active"><i>🔧</i> Maintenance</a></li>
+                <li><a href="{{ url_for('logout') }}"><i>🚪</i> Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>Maintenance Requests</h1>
+                <p>Submit and track maintenance issues</p>
+            </div>
+
+            <div class="form-container">
+                <h3>Submit Maintenance Request</h3>
+                <form id="maintenanceForm">
+                    <div class="form-group">
+                        <label for="maintenanceTitle">Issue Title</label>
+                        <input type="text" id="maintenanceTitle" name="title" required placeholder="e.g., Leaking faucet in kitchen">
+                    </div>
+                    <div class="form-group">
+                        <label for="maintenanceDescription">Description</label>
+                        <textarea id="maintenanceDescription" name="description" required rows="5" placeholder="Please describe the issue in detail..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="maintenanceUrgency">Urgency Level</label>
+                        <select id="maintenanceUrgency" name="urgency">
+                            <option value="low">Low - Minor issue</option>
+                            <option value="medium" selected>Medium - Needs attention</option>
+                            <option value="high">High - Urgent repair needed</option>
+                            <option value="emergency">Emergency - Immediate attention required</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>Recent Maintenance Requests</h3>
+                <div id="maintenanceHistory">
+                    <p class="text-center" style="color: var(--gray);">No maintenance requests submitted yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('maintenanceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            fetch('/tenant/submit-maintenance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Maintenance request submitted successfully!');
+                    document.getElementById('maintenanceForm').reset();
+                    
+                    // Add to history
+                    const historyDiv = document.getElementById('maintenanceHistory');
+                    historyDiv.innerHTML = `
+                        <div class="notification-item">
+                            <strong>${data.title}</strong>
+                            <p>${data.description}</p>
+                            <small>Submitted: Just now • Urgency: ${data.urgency}</small>
+                        </div>
+                    ` + historyDiv.innerHTML;
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
