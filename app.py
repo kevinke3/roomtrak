@@ -5,6 +5,7 @@ from config import Config
 from datetime import datetime, timedelta
 import json
 
+
 app = Flask(__name__)
 app.config.from_object(Config)
 
